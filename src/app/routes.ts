@@ -16,6 +16,8 @@ import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
 import PaymentSuccess from "./pages/customer/PaymentSuccess";
 import TransactionHistory from "./pages/customer/TransactionHistory";
+import ScanAndShop from "./pages/customer/ScanAndShop";
+import GroupBuying from "./pages/customer/GroupBuying";
 
 // Vendor pages
 import VendorLayout from "./pages/vendor/VendorLayout";
@@ -24,6 +26,10 @@ import ProductManagement from "./pages/vendor/ProductManagement";
 import OrdersManagement from "./pages/vendor/OrdersManagement";
 import VendorPayments from "./pages/vendor/Payments";
 import VendorAnalytics from "./pages/vendor/Analytics";
+import SupplierMarketplace from "./pages/vendor/SupplierMarketplace";
+import MultiSupplierBasket from "./pages/vendor/MultiSupplierBasket";
+import RevenueSplit from "./pages/vendor/RevenueSplit";
+import PayByLink from "./pages/vendor/PayByLink";
 
 // Agent pages
 import AgentLayout from "./pages/agent/AgentLayout";
@@ -91,6 +97,8 @@ export const router = createBrowserRouter([
       { path: "disputes", Component: DisputeResolution },
       { path: "settings", Component: Settings },
       { path: "support", Component: Support },
+      { path: "scan-and-shop", Component: ScanAndShop },
+      { path: "group-buying", Component: GroupBuying },
     ],
   },
   {
@@ -106,6 +114,10 @@ export const router = createBrowserRouter([
       { path: "disputes", Component: DisputeResolution },
       { path: "settings", Component: Settings },
       { path: "support", Component: Support },
+      { path: "supplier-marketplace", Component: SupplierMarketplace },
+      { path: "multi-supplier-basket", Component: MultiSupplierBasket },
+      { path: "revenue-split", Component: RevenueSplit },
+      { path: "pay-by-link", Component: PayByLink },
     ],
   },
   {
