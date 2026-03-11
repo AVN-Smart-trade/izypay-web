@@ -23,12 +23,14 @@ AVN SmartTrade is a multi-role digital commerce web application built for the Zi
 | **Government** | `/government` | Compliance reports, platform oversight |
 
 ### Shared Features (all roles)
+
 - Wallet Management
 - Dispute Resolution
 - Settings
 - Support
 
 ### Authentication Flow
+
 - Registration & Login
 - Forgot Password
 - OTP Verification
