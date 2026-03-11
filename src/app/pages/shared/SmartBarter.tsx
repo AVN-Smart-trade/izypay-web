@@ -1,20 +1,27 @@
-import { Card } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Separator } from '../../components/ui/separator';
-import { 
-  Repeat, Package, FileText, TrendingUp, ShoppingBag, 
-  Warehouse, Shield, Check, DollarSign, PieChart
+import {
+    Check, DollarSign,
+    FileText,
+    Package,
+    PieChart,
+    Repeat,
+    Shield,
+    ShoppingBag,
+    Warehouse
 } from 'lucide-react';
-import { 
-  registeredAssets, 
-  dacPortfolio, 
-  assetExchanges, 
-  warehouseReceipts,
-  smartBarterStats 
-} from '../../lib/wallet-barter-data';
 import { Link } from 'react-router';
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
+import { Separator } from '../../components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import {
+    assetExchanges,
+    dacPortfolio,
+    registeredAssets,
+    smartBarterStats,
+    warehouseReceipts
+} from '../../lib/wallet-barter-data';
 
 export default function SmartBarter() {
   return (
@@ -141,17 +148,25 @@ export default function SmartBarter() {
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {registeredAssets.map((asset) => (
-                <Card key={asset.id} className="p-6 border-2 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
-                      {asset.type === 'grain' ? '🌾' : asset.type === 'livestock' ? '🐄' : '📦'}
-                    </div>
-                    <Badge className="bg-success text-white">
+                <Card key={asset.id} className="overflow-hidden border-2 hover:shadow-lg transition-shadow">
+                  {/* Thumbnail */}
+                  <div className="relative h-44 w-full overflow-hidden">
+                    <ImageWithFallback
+                      src={asset.image}
+                      alt={asset.category}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <Badge className="absolute top-3 right-3 bg-success text-white">
                       {asset.status}
                     </Badge>
+                    <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                      <span className="text-xl">{asset.type === 'grain' ? '🌾' : asset.type === 'livestock' ? '🐄' : '🍃'}</span>
+                      <span className="text-white font-bold text-lg drop-shadow">{asset.category}</span>
+                    </div>
                   </div>
 
-                  <h4 className="font-bold text-lg mb-2">{asset.category}</h4>
+                  <div className="p-5">
                   <p className="text-sm text-muted-foreground mb-4">{asset.location}</p>
 
                   <div className="space-y-2 mb-4">
@@ -202,6 +217,7 @@ export default function SmartBarter() {
                       Exchange
                     </Button>
                   </div>
+                  </div>{/* end inner padding div */}
                 </Card>
               ))}
             </div>
