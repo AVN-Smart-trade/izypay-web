@@ -93,7 +93,7 @@ export default function Landing() {
                 </Link>
                 <Link to="/government">
                   <Button size="lg" variant="outline"
-                    className="gap-2 font-bold px-8 py-6 text-base rounded-2xl border-white/30 text-white hover:bg-white/10">
+                    className="gap-2 font-bold px-8 py-6 text-base rounded-2xl border-white/30 text-black hover:bg-white/10">
                     <Globe className="w-5 h-5" /> Government Portal
                   </Button>
                 </Link>
@@ -157,7 +157,7 @@ export default function Landing() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 font-medium">IzyPay Wallet</div>
-                  <div className="font-black text-gray-900 text-sm">USD Â· ZiG Â· DAC</div>
+                  <div className="font-black text-gray-900 text-sm">3-Currency Smart Wallet</div>
                 </div>
               </div>
             </div>
@@ -461,7 +461,7 @@ export default function Landing() {
               </Button>
             </Link>
             <Link to="/register">
-              <Button size="lg" variant="outline" className="gap-2 font-bold px-10 py-7 text-lg rounded-2xl border-white/30 text-white hover:bg-white/10">
+              <Button size="lg" variant="outline" className="gap-2 font-bold px-10 py-7 text-lg rounded-2xl border-white/30 text-black hover:bg-white/10">
                 Register as Customer
               </Button>
             </Link>
