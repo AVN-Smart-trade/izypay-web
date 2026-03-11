@@ -55,6 +55,9 @@ import Settings from "./pages/shared/Settings";
 import WalletManagement from "./pages/shared/WalletManagement";
 import DisputeResolution from "./pages/shared/DisputeResolution";
 import Support from "./pages/shared/Support";
+import IzyPayWallet from "./pages/shared/IzyPayWallet";
+import P2PTransfer from "./pages/shared/P2PTransfer";
+import SmartBarter from "./pages/shared/SmartBarter";
 
 import NotFound from "./pages/NotFound";
 
@@ -94,6 +97,9 @@ export const router = createBrowserRouter([
       { path: "payment-success", Component: PaymentSuccess },
       { path: "transactions", Component: TransactionHistory },
       { path: "wallet", Component: WalletManagement },
+      { path: "izypay-wallet", Component: IzyPayWallet },
+      { path: "p2p-transfer", Component: P2PTransfer },
+      { path: "smartbarter", Component: SmartBarter },
       { path: "disputes", Component: DisputeResolution },
       { path: "settings", Component: Settings },
       { path: "support", Component: Support },
@@ -111,6 +117,9 @@ export const router = createBrowserRouter([
       { path: "payments", Component: VendorPayments },
       { path: "analytics", Component: VendorAnalytics },
       { path: "wallet", Component: WalletManagement },
+      { path: "izypay-wallet", Component: IzyPayWallet },
+      { path: "p2p-transfer", Component: P2PTransfer },
+      { path: "smartbarter", Component: SmartBarter },
       { path: "disputes", Component: DisputeResolution },
       { path: "settings", Component: Settings },
       { path: "support", Component: Support },
@@ -127,6 +136,9 @@ export const router = createBrowserRouter([
       { index: true, Component: AgentOverview },
       { path: "territories", Component: TerritoryManagement },
       { path: "commission", Component: CommissionTracking },
+      { path: "izypay-wallet", Component: IzyPayWallet },
+      { path: "p2p-transfer", Component: P2PTransfer },
+      { path: "smartbarter", Component: SmartBarter },
       { path: "settings", Component: Settings },
       { path: "support", Component: Support },
     ],
@@ -141,6 +153,8 @@ export const router = createBrowserRouter([
       { path: "users", Component: UserManagement },
       { path: "reports", Component: Reports },
       { path: "disputes", Component: DisputeResolution },
+      { path: "izypay-wallet", Component: IzyPayWallet },
+      { path: "smartbarter", Component: SmartBarter },
       { path: "settings", Component: Settings },
       { path: "support", Component: Support },
     ],
