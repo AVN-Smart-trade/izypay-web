@@ -310,19 +310,19 @@ export default function Landing() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                emoji: 'ðŸ›’', title: 'Customers', color: '#0F6F5C', bg: 'rgba(15,111,92,0.07)', path: '/customer',
+                emoji: '🛒', title: 'Customers', color: '#0F6F5C', bg: 'rgba(15,111,92,0.07)', path: '/customer',
                 perks: ['Marketplace shopping', 'Group buying deals', 'Scan & pay QR', 'Multi-currency wallet'],
               },
               {
-                emoji: 'ðŸª', title: 'Vendors', color: '#C7A246', bg: 'rgba(199,162,70,0.07)', path: '/vendor',
+                emoji: '🏪', title: 'Vendors', color: '#C7A246', bg: 'rgba(199,162,70,0.07)', path: '/vendor',
                 perks: ['Digital storefront', 'Order management', 'Revenue split', 'B2B supplier marketplace'],
               },
               {
-                emoji: 'ðŸš´', title: 'Field Agents', color: '#12B76A', bg: 'rgba(18,183,106,0.07)', path: '/agent',
+                emoji: '🚴', title: 'Field Agents', color: '#12B76A', bg: 'rgba(18,183,106,0.07)', path: '/agent',
                 perks: ['Territory management', 'Commission tracking', 'SmartBarter access', 'P2P transfers'],
               },
               {
-                emoji: 'ðŸ›ï¸', title: 'Government', color: '#0F6F5C', bg: 'rgba(15,111,92,0.07)', path: '/government',
+                emoji: '🏛️', title: 'Government', color: '#0F6F5C', bg: 'rgba(15,111,92,0.07)', path: '/government',
                 perks: ['Real-time monitoring', 'Compliance reports', 'Fraud detection', 'Financial inclusion data'],
               },
             ].map(r => (
