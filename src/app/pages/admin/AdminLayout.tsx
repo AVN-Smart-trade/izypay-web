@@ -1,6 +1,6 @@
+import { Activity, AlertCircle, CheckCircle2, CreditCard, FileText, HelpCircle, Home, Repeat, Settings, Users } from 'lucide-react';
 import { Outlet } from 'react-router';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { Home, CheckCircle2, Activity, Users, FileText, AlertCircle, Settings, HelpCircle } from 'lucide-react';
 
 const navigation = [
   { label: 'System Overview', path: '/admin', icon: Home },
@@ -8,6 +8,8 @@ const navigation = [
   { label: 'Transaction Monitoring', path: '/admin/monitoring', icon: Activity },
   { label: 'User Management', path: '/admin/users', icon: Users },
   { label: 'Reports', path: '/admin/reports', icon: FileText },
+  { label: 'IzyPay Wallet', path: '/admin/izypay-wallet', icon: CreditCard },
+  { label: 'SmartBarter', path: '/admin/smartbarter', icon: Repeat },
   { label: 'Disputes', path: '/admin/disputes', icon: AlertCircle },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
   { label: 'Support', path: '/admin/support', icon: HelpCircle },
