@@ -1,4 +1,4 @@
-﻿import {
+import {
     Activity,
     DollarSign,
     MapPin,
@@ -85,7 +85,7 @@ export default function GovOverview() {
         <div className="grid md:grid-cols-3 gap-4">
           {[
             { label: 'Women-Owned Businesses', value: `${systemStats.womenOwnedBusinesses}%`, sub: '2,228 women entrepreneurs', change: '+8%', color: '#0F6F5C' },
-            { label: 'Youth Participation (18â€“35)', value: `${systemStats.youthParticipation}%`, sub: '10,318 youth engaged', change: '+12%', color: '#C7A246' },
+            { label: 'Youth Participation (18–35)', value: `${systemStats.youthParticipation}%`, sub: '10,318 youth engaged', change: '+12%', color: '#C7A246' },
             { label: 'Rural SME Participation', value: '34%', sub: '1,306 rural vendors', change: '+6%', color: '#12B76A' },
           ].map(m => (
             <div key={m.label} className="p-5 rounded-xl" style={{ background: `${m.color}08`, border: `1px solid ${m.color}22` }}>
