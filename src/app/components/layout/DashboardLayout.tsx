@@ -4,13 +4,11 @@
     LogOut,
     Menu,
     Search,
-    Sparkles,
-    User
+    Sparkles
 } from 'lucide-react';
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
+import { logout } from '../../api/auth';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -51,7 +49,8 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const cfg = userTypeConfig[userType];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 

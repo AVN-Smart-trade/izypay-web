@@ -1,11 +1,33 @@
-import { Link } from 'react-router';
+import { ArrowLeft, Mail } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { resetPasswordInit } from '../../api/account';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { ArrowLeft, Mail } from 'lucide-react';
 
 export default function ForgotPassword() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+    try {
+      setSubmitting(true);
+      await resetPasswordInit(email.trim());
+      toast.success('Password reset email sent (if the account exists).');
+      navigate('/login');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to start password reset');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-accent/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -20,17 +42,25 @@ export default function ForgotPassword() {
               <Mail className="w-8 h-8 text-primary" />
             </div>
             <h1 className="text-3xl font-bold mb-2">Reset Password</h1>
-            <p className="text-muted-foreground">Enter your phone number to receive a verification code</p>
+            <p className="text-muted-foreground">Enter your email address to receive a reset link</p>
           </div>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+263 77 123 4567" required />
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john.doe@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Send Verification Code
+            <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+              {submitting ? 'Sending…' : 'Send Reset Email'}
             </Button>
           </form>
 

@@ -1,18 +1,34 @@
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { login } from '../../api/auth';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { ArrowLeft } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Navigate to biometric verification then dashboard
-    navigate('/biometric');
+    if (submitting) return;
+
+    try {
+      setSubmitting(true);
+      await login({ username: username.trim(), password, rememberMe });
+      toast.success('Login successful');
+      navigate('/biometric');
+    } catch (err: any) {
+      toast.error(err?.message || 'Login failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -34,18 +50,39 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+263 77 123 4567" required />
+              <Label htmlFor="username">Phone / Username</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="+263 77 123 4567"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoComplete="username"
+              />
             </div>
 
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="••••••••" required />
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="remember" />
+                <input
+                  type="checkbox"
+                  id="remember"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
                 <Label htmlFor="remember" className="text-sm">Remember me</Label>
               </div>
               <Link to="/forgot-password" className="text-sm text-primary hover:underline">
@@ -53,8 +90,8 @@ export default function Login() {
               </Link>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Login
+            <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+              {submitting ? 'Logging in…' : 'Login'}
             </Button>
           </form>
 

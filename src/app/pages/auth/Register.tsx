@@ -1,20 +1,56 @@
+import { ArrowLeft, Briefcase, Store, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { register } from '../../api/account';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { ArrowLeft, User, Store, Briefcase } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 
 export default function Register() {
   const navigate = useNavigate();
   const [userType, setUserType] = useState<'customer' | 'vendor' | 'agent'>('customer');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Navigate to OTP verification
-    navigate('/otp-verify');
+    if (submitting) return;
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    const trimmedName = fullName.trim();
+    const parts = trimmedName.split(/\s+/).filter(Boolean);
+    const firstName = parts[0] ?? '';
+    const lastName = parts.slice(1).join(' ') || '';
+
+    try {
+      setSubmitting(true);
+      await register({
+        login: login.trim(),
+        firstName,
+        lastName,
+        email: email.trim(),
+        imageUrl: null,
+        langKey: 'en',
+        authorities: ['ROLE_USER'],
+        password,
+      });
+      toast.success('Registration successful. Check your email to activate your account.');
+      navigate('/login');
+    } catch (err: any) {
+      toast.error(err?.message || 'Registration failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -54,12 +90,40 @@ export default function Register() {
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
               <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" placeholder="Tendai Moyo" required />
+              <Input
+                id="fullName"
+                placeholder="Tendai Moyo"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                autoComplete="name"
+              />
             </div>
 
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+263 77 123 4567" required />
+              <Label htmlFor="login">Phone / Username</Label>
+              <Input
+                id="login"
+                type="text"
+                placeholder="+263 77 123 4567"
+                required
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                autoComplete="username"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john.doe@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
             </div>
 
             {userType === 'vendor' && (
@@ -77,12 +141,28 @@ export default function Register() {
 
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="••••••••" required />
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+              />
             </div>
 
             <div>
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input id="confirmPassword" type="password" placeholder="••••••••" required />
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
             </div>
 
             <div className="flex items-start gap-2">
@@ -92,8 +172,8 @@ export default function Register() {
               </Label>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Continue to Verification
+            <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+              {submitting ? 'Creating account…' : 'Create Account'}
             </Button>
           </form>
 

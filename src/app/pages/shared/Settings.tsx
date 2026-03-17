@@ -1,33 +1,124 @@
-import { useState } from 'react';
-import { Card } from '../../components/ui/card';
+import {
+    AlertCircle,
+    Bell,
+    Building2,
+    CheckCircle2,
+    Clock,
+    Lock,
+    Mail,
+    MapPin,
+    Phone,
+    Shield,
+    Smartphone,
+    Upload,
+    User
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { changePassword, getAccount, updateAccount } from '../../api/account';
+import type { AdminUserDTO } from '../../api/types';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Badge } from '../../components/ui/badge';
-import { Switch } from '../../components/ui/switch';
 import { Separator } from '../../components/ui/separator';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Building2, 
-  Shield, 
-  Bell, 
-  Lock,
-  Smartphone,
-  Upload,
-  CheckCircle2,
-  Clock,
-  AlertCircle
-} from 'lucide-react';
+import { Switch } from '../../components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { kycDocuments } from '../../lib/data';
 
 export default function Settings() {
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
+
+  const [account, setAccount] = useState<AdminUserDTO | null>(null);
+  const [loadingAccount, setLoadingAccount] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneOrLogin, setPhoneOrLogin] = useState('');
+  const [location, setLocation] = useState('');
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+
+  const parsedName = useMemo(() => {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: parts[0] ?? '',
+      lastName: parts.slice(1).join(' ') || '',
+    };
+  }, [fullName]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingAccount(true);
+        const acc = await getAccount();
+        if (!mounted) return;
+        setAccount(acc);
+        setFullName([acc.firstName, acc.lastName].filter(Boolean).join(' ') || acc.login);
+        setEmail(acc.email ?? '');
+        setPhoneOrLogin(acc.login);
+      } catch {
+        // Not authenticated or backend unavailable; keep defaults
+      } finally {
+        if (mounted) setLoadingAccount(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSaveProfile = async () => {
+    if (savingProfile) return;
+    try {
+      setSavingProfile(true);
+      await updateAccount({
+        firstName: parsedName.firstName,
+        lastName: parsedName.lastName,
+        email: email.trim(),
+        imageUrl: account?.imageUrl ?? null,
+        langKey: account?.langKey ?? 'en',
+      } as AdminUserDTO);
+      toast.success('Profile updated');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (changingPassword) return;
+    if (!currentPassword || !newPassword) {
+      toast.error('Please fill all password fields');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      await changePassword({ currentPassword, newPassword });
+      toast.success('Password updated');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -54,34 +145,58 @@ export default function Settings() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
-                <Input id="fullName" defaultValue="Tendai Moyo" />
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={loadingAccount}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input id="email" className="pl-9" defaultValue="tendai.moyo@email.com" />
+                  <Input
+                    id="email"
+                    className="pl-9"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loadingAccount}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input id="phone" className="pl-9" defaultValue="+263 77 123 4567" />
+                  <Input
+                    id="phone"
+                    className="pl-9"
+                    value={phoneOrLogin}
+                    onChange={(e) => setPhoneOrLogin(e.target.value)}
+                    disabled
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input id="location" className="pl-9" defaultValue="Harare, Zimbabwe" />
+                  <Input
+                    id="location"
+                    className="pl-9"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
             <Separator className="my-6" />
             <div className="flex justify-end gap-3">
               <Button variant="outline">Cancel</Button>
-              <Button>Save Changes</Button>
+              <Button onClick={handleSaveProfile} disabled={savingProfile || loadingAccount}>
+                {savingProfile ? 'Saving…' : 'Save Changes'}
+              </Button>
             </div>
           </Card>
 
@@ -126,17 +241,37 @@ export default function Settings() {
             <div className="space-y-4 max-w-md">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">Current Password</Label>
-                <Input id="currentPassword" type="password" />
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
-                <Input id="newPassword" type="password" />
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input id="confirmPassword" type="password" />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
               </div>
-              <Button>Update Password</Button>
+              <Button onClick={handleChangePassword} disabled={changingPassword}>
+                {changingPassword ? 'Updating…' : 'Update Password'}
+              </Button>
             </div>
           </Card>
 
