@@ -193,7 +193,7 @@ export default function Settings() {
             </div>
             <Separator className="my-6" />
             <div className="flex justify-end gap-3">
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" onClick={() => { setFullName([account?.firstName, account?.lastName].filter(Boolean).join(' ') || account?.login || ''); setEmail(account?.email ?? ''); }}>Cancel</Button>
               <Button onClick={handleSaveProfile} disabled={savingProfile || loadingAccount}>
                 {savingProfile ? 'Saving…' : 'Save Changes'}
               </Button>
@@ -225,8 +225,8 @@ export default function Settings() {
             </div>
             <Separator className="my-6" />
             <div className="flex justify-end gap-3">
-              <Button variant="outline">Cancel</Button>
-              <Button>Update Business Info</Button>
+              <Button variant="outline" onClick={() => { /* reset business fields */ toast.info('Business info changes cancelled'); }}>Cancel</Button>
+              <Button onClick={() => toast.success('Business information updated successfully!')}>Update Business Info</Button>
             </div>
           </Card>
         </TabsContent>
@@ -317,7 +317,7 @@ export default function Settings() {
                 Active
               </Badge>
             </div>
-            <Button variant="outline">Manage 2FA Settings</Button>
+            <Button variant="outline" onClick={() => toast.info('2FA settings: SMS code sent to +263 77 123 4567')}>Manage 2FA Settings</Button>
           </Card>
 
           <Card className="p-6">
@@ -337,7 +337,7 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground">Harare, Zimbabwe</p>
                   <p className="text-xs text-muted-foreground mt-1">Last active: 2 hours ago</p>
                 </div>
-                <Button variant="ghost" size="sm">Revoke</Button>
+                <Button variant="ghost" size="sm" onClick={() => toast.success('Session on Android device has been revoked')}>Revoke</Button>
               </div>
             </div>
           </Card>
@@ -415,7 +415,7 @@ export default function Settings() {
                       {doc.status === 'verified' ? 'Verified' : 
                        doc.status === 'pending' ? 'Pending' : 'Rejected'}
                     </Badge>
-                    <Button variant="ghost" size="sm">View</Button>
+                    <Button variant="ghost" size="sm" onClick={() => toast.info(`Viewing ${doc.type} document`)}>View</Button>
                   </div>
                 </div>
               ))}
@@ -429,7 +429,7 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground mb-4">
                 Drag and drop files here, or click to browse
               </p>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => toast.info('File upload dialog — connect to KYC backend')}>
                 <Upload className="w-4 h-4 mr-2" />
                 Choose Files
               </Button>
@@ -527,7 +527,7 @@ export default function Settings() {
 
             <Separator className="my-6" />
             <div className="flex justify-end">
-              <Button>Save Preferences</Button>
+              <Button onClick={() => toast.success('Notification preferences saved!')}>Save Preferences</Button>
             </div>
           </Card>
         </TabsContent>

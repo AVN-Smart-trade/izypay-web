@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { walletBalances, walletTransactions, trustScore } from '../../lib/wallet-barter-data';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 
 export default function IzyPayWallet() {
   const [balanceVisible, setBalanceVisible] = useState(true);
@@ -33,7 +34,7 @@ export default function IzyPayWallet() {
           <h1 className="text-3xl font-bold mb-2">IzyPay Wallet</h1>
           <p className="text-muted-foreground">Multi-currency digital wallet with P2P transfers</p>
         </div>
-        <Button className="bg-primary text-white gap-2">
+        <Button className="bg-primary text-white gap-2" onClick={() => toast.info('Top Up dialog — connect to IzyPay backend')}>
           <Plus className="w-4 h-4" />
           Top Up
         </Button>
@@ -137,15 +138,15 @@ export default function IzyPayWallet() {
               <span className="text-sm">Send Money</span>
             </Button>
           </Link>
-          <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+          <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2" onClick={() => toast.info('Share your IzyPay ID: izypay://tendai.moyo to receive money')}>
             <Download className="w-6 h-6 text-success" />
             <span className="text-sm">Receive</span>
           </Button>
-          <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+          <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2" onClick={() => toast.info('Top Up: add funds via bank transfer or mobile money')}>
             <Plus className="w-6 h-6 text-secondary" />
             <span className="text-sm">Top Up</span>
           </Button>
-          <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+          <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2" onClick={() => toast.info('Withdraw to your linked bank account')}>
             <Landmark className="w-6 h-6 text-primary" />
             <span className="text-sm">Withdraw</span>
           </Button>
@@ -202,8 +203,7 @@ export default function IzyPayWallet() {
               ))}
             </div>
 
-            <Button variant="outline" className="w-full mt-4">
-              View All Transactions
+            <Button variant="outline" className="w-full mt-4" onClick={() => toast.info('Full transaction history is in the Wallet page')}>              View All Transactions
             </Button>
           </Card>
         </TabsContent>

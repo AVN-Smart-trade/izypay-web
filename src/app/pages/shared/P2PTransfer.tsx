@@ -226,7 +226,7 @@ export default function P2PTransfer() {
               ))}
             </div>
 
-            <Button variant="outline" className="w-full mt-4">
+            <Button variant="outline" className="w-full mt-4" onClick={() => toast.info('Full P2P transfer history — navigate to Wallet for complete history')}>
               View All Transfers
             </Button>
           </Card>
@@ -236,8 +236,16 @@ export default function P2PTransfer() {
             <h3 className="font-bold mb-4">Quick Send</h3>
             <p className="text-sm text-muted-foreground mb-4">Send to recent recipients</p>
             <div className="grid grid-cols-3 gap-3">
-              {['Chipo Ndlovu', 'Nyasha Dube', 'Blessing Ncube'].map((name, idx) => (
-                <Button key={idx} variant="outline" className="flex flex-col h-auto py-4 gap-2">
+                {['Chipo Ndlovu', 'Nyasha Dube', 'Blessing Ncube'].map((name, idx) => (
+                <Button
+                  key={idx}
+                  variant="outline"
+                  className="flex flex-col h-auto py-4 gap-2"
+                  onClick={() => {
+                    setRecipient(name);
+                    toast.success(`${name} selected as recipient — enter amount above`);
+                  }}
+                >
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <Users className="w-5 h-5 text-primary" />
                   </div>

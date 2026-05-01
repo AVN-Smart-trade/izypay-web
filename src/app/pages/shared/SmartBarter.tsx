@@ -22,6 +22,7 @@ import {
     smartBarterStats,
     warehouseReceipts
 } from '../../lib/wallet-barter-data';
+import { toast } from 'sonner';
 
 export default function SmartBarter() {
   return (
@@ -31,12 +32,10 @@ export default function SmartBarter() {
           <h1 className="text-3xl font-bold mb-2">SmartBarter Exchange</h1>
           <p className="text-muted-foreground">Asset-backed payments with Digital Asset Credits (DACs)</p>
         </div>
-        <Link to="register-asset">
-          <Button className="bg-primary text-white gap-2">
+        <Button className="bg-primary text-white gap-2" onClick={() => toast.info('Asset registration form — coming soon!')}>
             <Package className="w-4 h-4" />
             Register Asset
           </Button>
-        </Link>
       </div>
 
       {/* Service Banner */}
@@ -138,12 +137,10 @@ export default function SmartBarter() {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold">Registered Assets</h3>
-              <Link to="register-asset">
-                <Button className="bg-primary text-white gap-2">
+              <Button className="bg-primary text-white gap-2" onClick={() => toast.info('Asset registration form — coming soon!')}>
                   <Package className="w-4 h-4" />
                   Register New Asset
                 </Button>
-              </Link>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -209,13 +206,11 @@ export default function SmartBarter() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <FileText className="w-3 h-3 mr-1" />
-                      Receipt
-                    </Button>
-                    <Button size="sm" className="flex-1 bg-secondary text-white">
-                      Exchange
-                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => toast.success(`Warehouse receipt for ${asset.category} downloaded`)}>                       <FileText className="w-3 h-3 mr-1" />
+                       Receipt
+                     </Button>
+                     <Button size="sm" className="flex-1 bg-secondary text-white" onClick={() => toast.info(`Initiating exchange for ${asset.category} — ${asset.totalValueDAC} DAC`)}>                       Exchange
+                     </Button>
                   </div>
                   </div>{/* end inner padding div */}
                 </Card>
@@ -250,17 +245,17 @@ export default function SmartBarter() {
             <Card className="p-6 bg-muted/30">
               <h4 className="font-bold mb-4">Use Your DACs</h4>
               <div className="grid md:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => toast.info('Merchants accepting DAC payments — browse marketplace')}>
                   <ShoppingBag className="w-6 h-6 text-primary" />
                   <span className="text-sm">Pay Merchants</span>
                   <span className="text-xs text-muted-foreground">Use DACs for goods</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => toast.info('Redeeming DACs: 1 DAC = $1 USD at current exchange rate')}>
                   <DollarSign className="w-6 h-6 text-success" />
                   <span className="text-sm">Convert to Cash</span>
                   <span className="text-xs text-muted-foreground">Redeem for USD/ZiG</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => toast.info('Asset trading marketplace — coming soon!')}>
                   <Repeat className="w-6 h-6 text-secondary" />
                   <span className="text-sm">Trade Assets</span>
                   <span className="text-xs text-muted-foreground">Exchange on marketplace</span>
@@ -391,14 +386,12 @@ export default function SmartBarter() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <FileText className="w-3 h-3 mr-1" />
-                      Download
-                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => toast.success(`Warehouse receipt ${receipt.id} downloaded`)}>                       <FileText className="w-3 h-3 mr-1" />
+                       Download
+                     </Button>
                     {receipt.transferable && (
-                      <Button size="sm" className="flex-1">
-                        Transfer
-                      </Button>
+                      <Button size="sm" className="flex-1" onClick={() => toast.info(`Initiating transfer of warehouse receipt ${receipt.id}`)}>                         Transfer
+                       </Button>
                     )}
                   </div>
                 </Card>

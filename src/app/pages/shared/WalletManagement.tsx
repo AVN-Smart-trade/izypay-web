@@ -5,13 +5,20 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Badge } from '../../components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { 
-  Wallet, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  RefreshCw, 
+import {
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight,
+  RefreshCw,
   CreditCard,
   Building2,
   TrendingUp,
@@ -19,14 +26,26 @@ import {
   Eye,
   EyeOff,
   Plus,
-  ArrowRightLeft
+  ArrowRightLeft,
 } from 'lucide-react';
 import { walletTransactions } from '../../lib/data';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
 
 export default function WalletManagement() {
   const [showBalance, setShowBalance] = useState(true);
   const [currency, setCurrency] = useState('USD');
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferRecipient, setTransferRecipient] = useState('');
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('all');
+
+  const [walletBalance, setWalletBalance] = useState({ USD: 1245.50, ZIG: 24567.80 });
+  const [transactions, setTransactions] = useState(walletTransactions);
 
   const balanceData = [
     { date: 'Feb 25', balance: 985 },
@@ -34,13 +53,63 @@ export default function WalletManagement() {
     { date: 'Feb 27', balance: 1185 },
     { date: 'Feb 28', balance: 1125 },
     { date: 'Mar 01', balance: 1210 },
-    { date: 'Mar 02', balance: 1245 },
+    { date: 'Mar 02', balance: walletBalance.USD },
   ];
 
-  const walletBalance = {
-    USD: 1245.50,
-    ZIG: 24567.80
+  const handleTopUp = () => {
+    const amount = parseFloat(topUpAmount);
+    if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
+    setWalletBalance(prev => ({ ...prev, USD: prev.USD + amount }));
+    const newTxn = {
+      id: `WTX-${Date.now()}`,
+      type: 'credit',
+      amount,
+      currency: 'USD',
+      description: `Top-up via Mastercard ••••4567`,
+      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      balance: walletBalance.USD + amount,
+    };
+    setTransactions(prev => [newTxn, ...prev]);
+    toast.success(`$${amount.toFixed(2)} added to your wallet!`);
+    setTopUpAmount('');
+    setTopUpOpen(false);
   };
+
+  const handleWithdraw = () => {
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
+    if (amount > walletBalance.USD) { toast.error('Insufficient wallet balance'); return; }
+    setWalletBalance(prev => ({ ...prev, USD: prev.USD - amount }));
+    const newTxn = {
+      id: `WTX-${Date.now()}`,
+      type: 'debit',
+      amount,
+      currency: 'USD',
+      description: `Withdrawal to ZB Bank ••••8901`,
+      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      balance: walletBalance.USD - amount,
+    };
+    setTransactions(prev => [newTxn, ...prev]);
+    toast.success(`$${amount.toFixed(2)} withdrawal initiated to your bank account.`);
+    setWithdrawAmount('');
+    setWithdrawOpen(false);
+  };
+
+  const handleTransfer = () => {
+    const amount = parseFloat(transferAmount);
+    if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
+    if (!transferRecipient.trim()) { toast.error('Enter a recipient'); return; }
+    if (amount > walletBalance.USD) { toast.error('Insufficient wallet balance'); return; }
+    setWalletBalance(prev => ({ ...prev, USD: prev.USD - amount }));
+    toast.success(`$${amount.toFixed(2)} transferred to ${transferRecipient}`);
+    setTransferAmount('');
+    setTransferRecipient('');
+    setTransferOpen(false);
+  };
+
+  const filteredTransactions = typeFilter === 'all'
+    ? transactions
+    : transactions.filter(t => t.type === typeFilter);
 
   return (
     <div className="space-y-6">
@@ -90,7 +159,8 @@ export default function WalletManagement() {
               {showBalance ? (
                 <>
                   <p className="text-5xl font-bold mb-2">
-                    {currency === 'USD' ? '$' : ''}{walletBalance[currency as keyof typeof walletBalance].toLocaleString()}
+                    {currency === 'USD' ? '$' : ''}
+                    {walletBalance[currency as keyof typeof walletBalance].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     {currency === 'ZIG' ? ' ZIG' : ''}
                   </p>
                   <div className="flex items-center gap-2 text-sm">
@@ -104,21 +174,85 @@ export default function WalletManagement() {
             </div>
 
             <div className="flex gap-3">
-              <Button variant="secondary" className="flex-1 gap-2">
-                <Plus className="w-4 h-4" />
-                Top Up
-              </Button>
-              <Button variant="secondary" className="flex-1 gap-2">
-                <ArrowUpRight className="w-4 h-4" />
-                Withdraw
-              </Button>
-              <Button variant="secondary" className="flex-1 gap-2">
-                <ArrowRightLeft className="w-4 h-4" />
-                Transfer
-              </Button>
+              <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="secondary" className="flex-1 gap-2">
+                    <Plus className="w-4 h-4" /> Top Up
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader><DialogTitle>Top Up Wallet</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label>Amount ($)</Label>
+                      <Input type="number" placeholder="0.00" value={topUpAmount} onChange={e => setTopUpAmount(e.target.value)} />
+                    </div>
+                    <div className="flex gap-2">
+                      {['10', '25', '50', '100'].map(a => (
+                        <Button key={a} variant="outline" size="sm" onClick={() => setTopUpAmount(a)}>${a}</Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Payment source: Mastercard ••••4567</p>
+                    <div className="flex gap-3 justify-end">
+                      <Button variant="outline" onClick={() => setTopUpOpen(false)}>Cancel</Button>
+                      <Button onClick={handleTopUp}>Confirm Top Up</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="secondary" className="flex-1 gap-2">
+                    <ArrowUpRight className="w-4 h-4" /> Withdraw
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader><DialogTitle>Withdraw Funds</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label>Amount ($)</Label>
+                      <Input type="number" placeholder="0.00" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Available: ${walletBalance.USD.toFixed(2)} • Destination: ZB Bank ••••8901
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                      <Button variant="outline" onClick={() => setWithdrawOpen(false)}>Cancel</Button>
+                      <Button onClick={handleWithdraw}>Confirm Withdrawal</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="secondary" className="flex-1 gap-2">
+                    <ArrowRightLeft className="w-4 h-4" /> Transfer
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader><DialogTitle>Transfer Funds</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label>Recipient (phone or username)</Label>
+                      <Input placeholder="+263 77 ..." value={transferRecipient} onChange={e => setTransferRecipient(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Amount ($)</Label>
+                      <Input type="number" placeholder="0.00" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Available: ${walletBalance.USD.toFixed(2)} • Fee: $0.00</p>
+                    <div className="flex gap-3 justify-end">
+                      <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancel</Button>
+                      <Button onClick={handleTransfer}>Send Transfer</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
-          
+
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32" />
           <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mb-24" />
         </Card>
@@ -156,9 +290,8 @@ export default function WalletManagement() {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-bold">Balance History</h3>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.success('Balance report downloaded')}>
+            <Download className="w-4 h-4" /> Export
           </Button>
         </div>
         <ResponsiveContainer width="100%" height={250}>
@@ -166,14 +299,8 @@ export default function WalletManagement() {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
-            <Tooltip />
-            <Line 
-              type="monotone" 
-              dataKey="balance" 
-              stroke="#006B3F" 
-              strokeWidth={3}
-              dot={{ fill: '#006B3F', r: 4 }}
-            />
+            <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Balance']} />
+            <Line type="monotone" dataKey="balance" stroke="#006B3F" strokeWidth={3} dot={{ fill: '#006B3F', r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
@@ -181,112 +308,19 @@ export default function WalletManagement() {
       {/* Transaction Management */}
       <Tabs defaultValue="all" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="all">All Transactions</TabsTrigger>
-          <TabsTrigger value="credit">Money In</TabsTrigger>
-          <TabsTrigger value="debit">Money Out</TabsTrigger>
+          <TabsTrigger value="all" onClick={() => setTypeFilter('all')}>All Transactions</TabsTrigger>
+          <TabsTrigger value="credit" onClick={() => setTypeFilter('credit')}>Money In</TabsTrigger>
+          <TabsTrigger value="debit" onClick={() => setTypeFilter('debit')}>Money Out</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-6">
-          <Card className="p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-              <h3 className="font-bold">Recent Transactions</h3>
-              <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="credit">Credit</SelectItem>
-                    <SelectItem value="debit">Debit</SelectItem>
-                    <SelectItem value="transfer">Transfer</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" className="gap-2">
-                  <Download className="w-4 h-4" />
-                  Download Report
-                </Button>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date & Time</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {walletTransactions.map((txn) => (
-                    <TableRow key={txn.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <p>{new Date(txn.date).toLocaleDateString()}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(txn.date).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{txn.description}</p>
-                        <p className="text-xs text-muted-foreground">{txn.id}</p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={
-                          txn.type === 'credit' ? 'bg-success/10 text-success' :
-                          txn.type === 'debit' ? 'bg-destructive/10 text-destructive' :
-                          'bg-accent/10 text-accent'
-                        }>
-                          {txn.type === 'credit' ? (
-                            <ArrowDownRight className="w-3 h-3 mr-1" />
-                          ) : txn.type === 'debit' ? (
-                            <ArrowUpRight className="w-3 h-3 mr-1" />
-                          ) : (
-                            <RefreshCw className="w-3 h-3 mr-1" />
-                          )}
-                          {txn.type === 'credit' ? 'Credit' : 
-                           txn.type === 'debit' ? 'Debit' : 'Transfer'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        <span className={
-                          txn.type === 'credit' ? 'text-success' :
-                          txn.type === 'debit' ? 'text-destructive' :
-                          'text-muted-foreground'
-                        }>
-                          {txn.type === 'credit' ? '+' : '-'}
-                          ${txn.amount.toFixed(2)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        ${txn.balance.toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+          <WalletTransactionTable transactions={filteredTransactions} />
         </TabsContent>
-
-        <TabsContent value="credit">
-          <Card className="p-6">
-            <p className="text-muted-foreground text-center py-8">
-              Filtered view for incoming transactions
-            </p>
-          </Card>
+        <TabsContent value="credit" className="space-y-6">
+          <WalletTransactionTable transactions={transactions.filter(t => t.type === 'credit')} />
         </TabsContent>
-
-        <TabsContent value="debit">
-          <Card className="p-6">
-            <p className="text-muted-foreground text-center py-8">
-              Filtered view for outgoing transactions
-            </p>
-          </Card>
+        <TabsContent value="debit" className="space-y-6">
+          <WalletTransactionTable transactions={transactions.filter(t => t.type === 'debit')} />
         </TabsContent>
       </Tabs>
 
@@ -324,11 +358,83 @@ export default function WalletManagement() {
           </div>
         </div>
 
-        <Button variant="outline" className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Payment Method
+        <Button variant="outline" className="gap-2" onClick={() => toast.info('Payment method form coming soon!')}>
+          <Plus className="w-4 h-4" /> Add Payment Method
         </Button>
       </Card>
     </div>
+  );
+}
+
+function WalletTransactionTable({ transactions }: { transactions: typeof walletTransactions }) {
+  return (
+    <Card className="p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h3 className="font-bold">Recent Transactions</h3>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => toast.success('Transaction report downloaded')}
+        >
+          <Download className="w-4 h-4" /> Download Report
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date &amp; Time</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead className="text-right">Balance</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactions.map((txn) => (
+              <TableRow key={txn.id}>
+                <TableCell className="font-medium">
+                  <div>
+                    <p>{new Date(txn.date).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(txn.date).toLocaleTimeString()}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <p className="font-medium">{txn.description}</p>
+                  <p className="text-xs text-muted-foreground">{txn.id}</p>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className={
+                    txn.type === 'credit' ? 'bg-success/10 text-success' :
+                    txn.type === 'debit' ? 'bg-destructive/10 text-destructive' :
+                    'bg-accent/10 text-accent'
+                  }>
+                    {txn.type === 'credit' ? <ArrowDownRight className="w-3 h-3 mr-1" /> :
+                     txn.type === 'debit' ? <ArrowUpRight className="w-3 h-3 mr-1" /> :
+                     <RefreshCw className="w-3 h-3 mr-1" />}
+                    {txn.type === 'credit' ? 'Credit' : txn.type === 'debit' ? 'Debit' : 'Transfer'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  <span className={
+                    txn.type === 'credit' ? 'text-success' :
+                    txn.type === 'debit' ? 'text-destructive' : 'text-muted-foreground'
+                  }>
+                    {txn.type === 'credit' ? '+' : '-'}${txn.amount.toFixed(2)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right font-medium">${txn.balance.toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+            {transactions.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No transactions found.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </Card>
   );
 }
