@@ -6,11 +6,30 @@ import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Store, Search, Star, MapPin, Package, TrendingUp, ShoppingCart } from 'lucide-react';
 import { suppliers } from '../../lib/extended-data';
-import { Link } from 'react-router';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { useMemo } from 'react';
 
 export default function SupplierMarketplace() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [basket, setBasket] = useState<string[]>([]);
+
+  const filteredSuppliers = useMemo(() => suppliers.filter(s => {
+    const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.category.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchCat = categoryFilter === 'all' || s.category.toLowerCase().includes(categoryFilter);
+    return matchSearch && matchCat;
+  }), [suppliers, searchQuery, categoryFilter]);
+
+  const handleAddToBasket = (supplierId: string, name: string) => {
+    if (!basket.includes(supplierId)) {
+      setBasket(prev => [...prev, supplierId]);
+      toast.success(`${name} added to your supplier basket`);
+    } else {
+      toast.info(`${name} is already in your basket`);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -84,7 +103,7 @@ export default function SupplierMarketplace() {
             </div>
           </div>
           <p className="text-sm text-muted-foreground mb-2">Your Basket</p>
-          <p className="text-2xl font-bold">3 items</p>
+          <p className="text-2xl font-bold">{basket.length} supplier{basket.length !== 1 ? 's' : ''}</p>
         </Card>
       </div>
 
@@ -96,9 +115,7 @@ export default function SupplierMarketplace() {
             <p className="text-muted-foreground mb-4">
               Add products from multiple suppliers to one basket and checkout once
             </p>
-            <Link to="/vendor/multi-basket">
-              <Button className="bg-primary text-white">View Your Basket</Button>
-            </Link>
+            <Button className="bg-primary text-white" onClick={() => navigate('/vendor/multi-supplier-basket')}>View Your Basket</Button>
           </div>
           <img 
             src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxBZnJpY2FuJTIwd2hvbGVzYWxlJTIwbWFya2V0JTIwYnVzaW5lc3N8ZW58MXx8fHwxNzQwNzExOTMzfDA&ixlib=rb-4.1.0&q=80&w=400"
@@ -108,9 +125,13 @@ export default function SupplierMarketplace() {
         </div>
       </Card>
 
-      {/* Supplier Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {suppliers.map((supplier) => (
+        {filteredSuppliers.length === 0 ? (
+          <div className="col-span-3 text-center py-12 text-muted-foreground">
+            <Store className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p>No suppliers found for your search</p>
+          </div>
+        ) : filteredSuppliers.map((supplier) => (
           <Card key={supplier.id} className="p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -156,9 +177,9 @@ export default function SupplierMarketplace() {
               {supplier.category}
             </Badge>
 
-            <Link to={`/vendor/supplier/${supplier.id}`}>
-              <Button className="w-full">Browse Products</Button>
-            </Link>
+            <Button className="w-full" onClick={() => handleAddToBasket(supplier.id, supplier.name)}>
+              {basket.includes(supplier.id) ? '✓ In Basket' : 'Browse Products'}
+            </Button>
           </Card>
         ))}
       </div>

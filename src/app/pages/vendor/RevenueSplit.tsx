@@ -7,15 +7,35 @@ import { Separator } from '../../components/ui/separator';
 import { DollarSign, Users, TrendingUp, PieChart as PieChartIcon, ArrowRight, Settings } from 'lucide-react';
 import { revenueSplits } from '../../lib/extended-data';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function RevenueSplit() {
   const standardSplit = revenueSplits[0];
+  const [editing, setEditing] = useState(false);
+  const [configName, setConfigName] = useState('');
+  const [parties, setParties] = useState([
+    { name: 'Vendor', percentage: '70' },
+    { name: 'Supplier', percentage: '20' },
+    { name: 'Agent', percentage: '10' },
+  ]);
   
   const pieData = standardSplit.splits.map(split => ({
-    name: split.party,
-    value: split.amount,
-    percentage: split.percentage
+    name: split.party, value: split.amount, percentage: split.percentage
   }));
+
+  const total = parties.reduce((s, p) => s + (parseFloat(p.percentage) || 0), 0);
+
+  const handleSave = () => {
+    if (Math.abs(total - 100) > 0.01) {
+      toast.error(`Percentages must sum to 100% (currently ${total.toFixed(1)}%)`);
+      return;
+    }
+    if (!configName.trim()) { toast.error('Enter a configuration name'); return; }
+    toast.success(`Revenue split "${configName}" saved successfully!`);
+    setEditing(false);
+    setConfigName('');
+  };
 
   const COLORS = ['#0F6F5C', '#C7A246', '#12B76A', '#3B82F6'];
 
@@ -91,9 +111,8 @@ export default function RevenueSplit() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold">Active Split Configuration</h3>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Settings className="w-4 h-4" />
-              Edit
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.success('Edit mode — save configuration below to apply changes')}>
+              <Settings className="w-4 h-4" /> Edit
             </Button>
           </div>
 
@@ -191,50 +210,24 @@ export default function RevenueSplit() {
             
             <div className="space-y-4">
               <h4 className="font-medium">Add Recipients</h4>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <Label>Party Name</Label>
-                  <Input placeholder="Vendor" />
-                </div>
-                <div>
-                  <Label>Percentage</Label>
-                  <div className="relative">
-                    <Input type="number" placeholder="70" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+              {parties.map((party, idx) => (
+                <div key={idx} className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <Label>Party Name</Label>
+                    <Input value={party.name} onChange={e => setParties(prev => prev.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))} />
+                  </div>
+                  <div>
+                    <Label>Percentage</Label>
+                    <div className="relative">
+                      <Input type="number" value={party.percentage} onChange={e => setParties(prev => prev.map((p, i) => i === idx ? { ...p, percentage: e.target.value } : p))} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <Label>Party Name</Label>
-                  <Input placeholder="Supplier" />
-                </div>
-                <div>
-                  <Label>Percentage</Label>
-                  <div className="relative">
-                    <Input type="number" placeholder="20" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <Label>Party Name</Label>
-                  <Input placeholder="Agent" />
-                </div>
-                <div>
-                  <Label>Percentage</Label>
-                  <div className="relative">
-                    <Input type="number" placeholder="10" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                  </div>
-                </div>
-              </div>
+              ))}
 
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full"
+                onClick={() => setParties(prev => [...prev, { name: '', percentage: '0' }])}>
                 + Add Another Party
               </Button>
             </div>
@@ -264,10 +257,16 @@ export default function RevenueSplit() {
               </div>
             </div>
 
-            <Button className="w-full bg-primary text-white gap-2">
-              Save Configuration
-              <ArrowRight className="w-4 h-4" />
-            </Button>
+                <div className="mt-3">
+                  <Label>Configuration Name</Label>
+                  <Input placeholder="e.g., Premium Partner Split" value={configName} onChange={e => setConfigName(e.target.value)} className="mb-3" />
+                </div>
+                <Button className="w-full bg-primary text-white gap-2" onClick={handleSave}>
+                  Save Configuration <ArrowRight className="w-4 h-4" />
+                </Button>
+                <p className={`text-xs text-center mt-2 ${Math.abs(total - 100) > 0.01 ? 'text-destructive' : 'text-success'}`}>
+                  Total: {total.toFixed(1)}% {Math.abs(total - 100) > 0.01 ? '(must equal 100%)' : '✓'}
+                </p>
           </div>
         </div>
       </Card>

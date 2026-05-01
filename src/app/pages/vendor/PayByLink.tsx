@@ -11,19 +11,48 @@ import { paymentLinks } from '../../lib/extended-data';
 import { toast } from 'sonner';
 
 export default function PayByLink() {
-  const [copied, setCopied] = useState(false);
+  const [links, setLinks] = useState(paymentLinks);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [generatedLink, setGeneratedLink] = useState('');
 
   const handleCopy = (link: string) => {
     navigator.clipboard.writeText(link);
-    setCopied(true);
+    setCopied(link);
     toast.success('Link copied to clipboard!');
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(null), 2000);
   };
 
-  const handleWhatsAppShare = (link: string, description: string) => {
-    const message = `Payment Request: ${description}\n\nPlease pay using this secure link:\n${link}`;
+  const handleWhatsAppShare = (link: string, desc: string) => {
+    const message = `Payment Request: ${desc}\n\nPlease pay using this secure link:\n${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
+
+  const handleSMSShare = (link: string, desc: string) => {
+    window.open(`sms:?body=${encodeURIComponent(`Payment: ${desc} - ${link}`)}`);
+  };
+
+  const handleGenerate = () => {
+    if (!amount || parseFloat(amount) <= 0) { toast.error('Enter a valid amount'); return; }
+    if (!description.trim()) { toast.error('Enter a description'); return; }
+    const id = `PL-${Date.now().toString().slice(-6)}`;
+    const link = `https://pay.avnsmarttrade.zw/${id}`;
+    setGeneratedLink(link);
+    const newLink = {
+      id, link, description, amount: parseFloat(amount), currency: 'USD',
+      status: 'active' as const, clicks: 0,
+      createdDate: new Date().toISOString().split('T')[0],
+      expiryDate: expiry || new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+    };
+    setLinks(prev => [newLink, ...prev]);
+    toast.success(`Payment link ${id} created! Share it now.`);
+  };
+
+  const activeLinks = links.filter(l => l.status === 'active').length;
+  const paidLinks = links.filter(l => l.status === 'paid').length;
+  const collected = links.filter(l => l.status === 'paid').reduce((s, l) => s + l.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -54,16 +83,18 @@ export default function PayByLink() {
               <Label htmlFor="amount">Payment Amount</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input id="amount" type="number" className="pl-9" placeholder="0.00" />
+                <Input id="amount" type="number" className="pl-9" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea 
-                id="description" 
+              <Textarea
+                id="description"
                 placeholder="e.g., Product payment, Invoice #12345"
                 rows={3}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
               />
             </div>
 
@@ -71,7 +102,7 @@ export default function PayByLink() {
               <Label htmlFor="expiry">Expiry Date</Label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input id="expiry" type="date" className="pl-9" />
+                <Input id="expiry" type="date" className="pl-9" value={expiry} onChange={e => setExpiry(e.target.value)} />
               </div>
             </div>
 
@@ -80,12 +111,12 @@ export default function PayByLink() {
               <div className="flex items-center gap-2 p-3 bg-white rounded border">
                 <Link2 className="w-4 h-4 text-primary flex-shrink-0" />
                 <code className="text-xs text-muted-foreground truncate">
-                  https://pay.avnsmarttrade.zw/PL-XXXXXX
+                  {generatedLink || 'https://pay.avnsmarttrade.zw/PL-XXXXXX'}
                 </code>
               </div>
             </div>
 
-            <Button className="w-full bg-primary text-white">
+            <Button className="w-full bg-primary text-white" onClick={handleGenerate}>
               Generate Payment Link
             </Button>
           </div>
@@ -96,23 +127,26 @@ export default function PayByLink() {
           <Card className="p-6">
             <h3 className="font-bold mb-4">Quick Share Options</h3>
             <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-auto py-4 flex flex-col gap-2"
-                onClick={() => handleWhatsAppShare('https://pay.avnsmarttrade.zw/PL-001234', 'Payment Request')}
+                onClick={() => handleWhatsAppShare(generatedLink || links[0]?.link || '', description || 'Payment Request')}
               >
                 <MessageSquare className="w-6 h-6 text-green-600" />
                 <span className="text-sm">WhatsApp</span>
               </Button>
-              <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+              <Button variant="outline" className="h-auto py-4 flex flex-col gap-2"
+                onClick={() => handleSMSShare(generatedLink || links[0]?.link || '', description || 'Payment Request')}>
                 <MessageSquare className="w-6 h-6 text-blue-600" />
                 <span className="text-sm">SMS</span>
               </Button>
-              <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+              <Button variant="outline" className="h-auto py-4 flex flex-col gap-2"
+                onClick={() => handleCopy(generatedLink || links[0]?.link || '')}>
                 <Copy className="w-6 h-6 text-primary" />
                 <span className="text-sm">Copy Link</span>
               </Button>
-              <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+              <Button variant="outline" className="h-auto py-4 flex flex-col gap-2"
+                onClick={() => { if (generatedLink) { window.open(generatedLink, '_blank'); } else { toast.info('Generate a link first'); } }}>
                 <Share2 className="w-6 h-6 text-secondary" />
                 <span className="text-sm">More Options</span>
               </Button>
@@ -153,15 +187,15 @@ export default function PayByLink() {
             <h4 className="font-medium mb-3">Payment Link Stats</h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-primary">12</p>
+                <p className="text-2xl font-bold text-primary">{activeLinks}</p>
                 <p className="text-xs text-muted-foreground">Active Links</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-success">8</p>
+                <p className="text-2xl font-bold text-success">{paidLinks}</p>
                 <p className="text-xs text-muted-foreground">Paid</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-secondary">$840</p>
+                <p className="text-2xl font-bold text-secondary">${collected.toFixed(0)}</p>
                 <p className="text-xs text-muted-foreground">Collected</p>
               </div>
             </div>
@@ -187,7 +221,7 @@ export default function PayByLink() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paymentLinks.map((link) => (
+          {links.map((link) => (
                 <TableRow key={link.id}>
                   <TableCell className="font-medium">{link.id}</TableCell>
                   <TableCell>{link.description}</TableCell>
@@ -220,13 +254,13 @@ export default function PayByLink() {
                         size="sm"
                         onClick={() => handleCopy(link.link)}
                       >
-                        {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                        {copied === link.link ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={() => window.open(link.link, '_blank')}>
                         <ExternalLink className="w-4 h-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleWhatsAppShare(link.link, link.description)}
                       >

@@ -1,4 +1,4 @@
-﻿import {
+import {
     AlertTriangle,
     ArrowLeftRight,
     ArrowRight,
@@ -12,10 +12,12 @@
     Sparkles,
     TrendingUp
 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '../../components/ui/button';
 import { aiInsights, salesChartData, zimbabweOrders } from '../../lib/data';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 const statCards = [
   {
@@ -41,6 +43,8 @@ const statCards = [
 ];
 
 export default function VendorOverview() {
+  const navigate = useNavigate();
+  const [restocked, setRestocked] = useState<string[]>([]);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -58,7 +62,15 @@ export default function VendorOverview() {
       {/* Stats */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map(s => (
-          <div key={s.label} className="rounded-2xl p-5 text-white relative overflow-hidden shadow-lg" style={{ background: s.gradient }}>
+          <div key={s.label}
+            className="rounded-2xl p-5 text-white relative overflow-hidden shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ background: s.gradient }}
+            onClick={() => {
+              if (s.label === 'Orders Today') navigate('/vendor/orders');
+              else if (s.label === 'Total Products') navigate('/vendor/products');
+              else if (s.label === 'Avg. Order Value') navigate('/vendor/analytics');
+            }}
+          >
             <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 -translate-y-6 translate-x-6 bg-white" />
             <div className="flex items-start justify-between mb-4">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/20">{s.icon}</div>
@@ -139,7 +151,7 @@ export default function VendorOverview() {
               </div>
             ))}
           </div>
-          <Button variant="outline" className="w-full mt-4 rounded-xl text-xs font-bold border-white/20 text-white hover:bg-white/10">
+          <Button variant="outline" className="w-full mt-4 rounded-xl text-xs font-bold border-white/20 text-white hover:bg-white/10" onClick={() => toast.info(aiInsights.join(' | '))}>
             View All Insights
           </Button>
         </div>
@@ -149,13 +161,13 @@ export default function VendorOverview() {
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-black text-gray-900">Recent Orders</h3>
-          <Button variant="ghost" size="sm" className="gap-1 text-xs font-semibold rounded-lg" style={{ color: '#0F6F5C' }}>
+          <Button variant="ghost" size="sm" className="gap-1 text-xs font-semibold rounded-lg" style={{ color: '#0F6F5C' }} onClick={() => navigate('/vendor/orders')}>
             View All <ArrowRight className="w-3 h-3" />
           </Button>
         </div>
         <div className="space-y-3">
           {zimbabweOrders.slice(0, 4).map((order) => (
-            <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+            <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer" onClick={() => navigate('/vendor/orders')}>
               <div className="flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
                   order.status === 'delivered' ? 'bg-green-100' :
@@ -210,7 +222,18 @@ export default function VendorOverview() {
                 <p className="font-semibold text-gray-900 text-sm">{item.name}</p>
                 <p className="text-xs text-red-500 font-medium">Only {item.units} units left</p>
               </div>
-              <Button size="sm" className="rounded-xl text-xs font-bold" style={{ background: '#0F6F5C' }}>Restock</Button>
+              <Button size="sm" className="rounded-xl text-xs font-bold" style={{ background: '#0F6F5C' }}
+                onClick={() => {
+                  if (!restocked.includes(item.name)) {
+                    setRestocked(prev => [...prev, item.name]);
+                    toast.success(`Restock order placed for ${item.name}`);
+                  } else {
+                    toast.info(`${item.name} restock already requested`);
+                  }
+                }}
+              >
+                {restocked.includes(item.name) ? '✓ Restocked' : 'Restock'}
+              </Button>
             </div>
           ))}
         </div>

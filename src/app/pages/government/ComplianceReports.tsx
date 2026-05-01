@@ -3,6 +3,9 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { 
   Shield, 
   AlertTriangle, 
@@ -16,6 +19,9 @@ import { disputes } from '../../lib/data';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 export default function ComplianceReports() {
+  const [caseFilter, setCaseFilter] = useState('all');
+  const [viewCase, setViewCase] = useState<typeof disputes[0] | null>(null);
+  
   const fraudData = [
     { name: 'Resolved', value: 156, color: '#12B76A' },
     { name: 'Under Investigation', value: 12, color: '#F1C40F' },
@@ -29,6 +35,18 @@ export default function ComplianceReports() {
     { category: 'Other', count: 18, percentage: 15 },
   ];
 
+  const activeDisputes = disputes.filter(d => d.status !== 'resolved');
+  const filteredCases = activeDisputes.filter(d => caseFilter === 'all' || d.status === caseFilter);
+
+  const downloadCSV = (name: string, rows: string[][]) => {
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${name}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${name} downloaded successfully`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -36,9 +54,11 @@ export default function ComplianceReports() {
           <h1 className="text-3xl font-bold mb-2">Compliance & Reports</h1>
           <p className="text-muted-foreground">System-wide compliance monitoring and reporting</p>
         </div>
-        <Button className="gap-2">
-          <Download className="w-4 h-4" />
-          Export Full Report
+        <Button className="gap-2" onClick={() => downloadCSV('full_compliance_report', [
+          ['Case ID', 'Type', 'Customer', 'Vendor', 'Amount', 'Status', 'Date'],
+          ...activeDisputes.map(d => [d.id, 'Dispute', d.customer, d.vendor, d.amount.toFixed(2), d.status, d.date])
+        ])}>
+          <Download className="w-4 h-4" /> Export Full Report
         </Button>
       </div>
 
@@ -170,7 +190,7 @@ export default function ComplianceReports() {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-bold">Active Investigations</h3>
-          <Select defaultValue="all">
+          <Select value={caseFilter} onValueChange={setCaseFilter}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -197,7 +217,7 @@ export default function ComplianceReports() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {disputes.filter(d => d.status !== 'resolved').map((dispute) => (
+              {filteredCases.map((dispute) => (
                 <TableRow key={dispute.id}>
                   <TableCell className="font-medium">{dispute.id}</TableCell>
                   <TableCell>
@@ -224,10 +244,30 @@ export default function ComplianceReports() {
                     {new Date(dispute.date).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <Eye className="w-4 h-4" />
-                      View
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="gap-2" onClick={() => setViewCase(dispute)}>
+                          <Eye className="w-4 h-4" /> View
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Investigation: {viewCase?.id}</DialogTitle></DialogHeader>
+                        {viewCase && (
+                          <div className="space-y-3 text-sm">
+                            <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 rounded-lg">
+                              <div><p className="text-muted-foreground">Customer</p><p className="font-medium">{viewCase.customer}</p></div>
+                              <div><p className="text-muted-foreground">Vendor</p><p className="font-medium">{viewCase.vendor}</p></div>
+                              <div><p className="text-muted-foreground">Amount</p><p className="font-bold">${viewCase.amount.toFixed(2)}</p></div>
+                              <div><p className="text-muted-foreground">Status</p><Badge variant="secondary" className={viewCase.status === 'open' ? 'bg-destructive/10 text-destructive' : 'bg-accent/10 text-accent'}>{viewCase.status}</Badge></div>
+                              <div className="col-span-2"><p className="text-muted-foreground">Date Opened</p><p className="font-medium">{new Date(viewCase.date).toLocaleDateString()}</p></div>
+                            </div>
+                            <Button className="w-full gap-2" variant="outline" onClick={() => { downloadCSV(`case_${viewCase.id}`, [['ID','Customer','Vendor','Amount','Status','Date'],[viewCase.id, viewCase.customer, viewCase.vendor, viewCase.amount.toFixed(2), viewCase.status, viewCase.date]]); }}>
+                              <Download className="w-4 h-4" /> Export Case Report
+                            </Button>
+                          </div>
+                        )}
+                      </DialogContent>
+                    </Dialog>
                   </TableCell>
                 </TableRow>
               ))}
@@ -298,15 +338,15 @@ export default function ComplianceReports() {
       <Card className="p-6">
         <h3 className="font-bold mb-6">Generate Custom Reports</h3>
         <div className="grid md:grid-cols-3 gap-4">
-          <Button variant="outline" className="h-24 flex flex-col gap-2">
+          <Button variant="outline" className="h-24 flex flex-col gap-2" onClick={() => downloadCSV('transaction_report', [['Date','Amount','Vendor','Status'],['2025-03-01','120.00','Harare Agro','completed'],['2025-03-02','45.00','Mbare Fresh','pending']])}>
             <FileText className="w-6 h-6" />
             <span>Transaction Report</span>
           </Button>
-          <Button variant="outline" className="h-24 flex flex-col gap-2">
+          <Button variant="outline" className="h-24 flex flex-col gap-2" onClick={() => downloadCSV('compliance_report', [['Metric','Value'],['AML Compliance','100%'],['KYC Completion','94.2%'],['Platform Uptime','99.8%'],['Fraud Reduction','87%']])}>
             <Shield className="w-6 h-6" />
             <span>Compliance Report</span>
           </Button>
-          <Button variant="outline" className="h-24 flex flex-col gap-2">
+          <Button variant="outline" className="h-24 flex flex-col gap-2" onClick={() => downloadCSV('fraud_analysis', [['Category','Count'],['Resolved','156'],['Under Investigation','12'],['False Alarms','32']])}>
             <AlertTriangle className="w-6 h-6" />
             <span>Fraud Analysis</span>
           </Button>

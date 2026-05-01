@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { provinceData, systemStats } from '../../lib/data';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 const statCards = [
   {
@@ -33,6 +35,7 @@ const statCards = [
 ];
 
 export default function GovOverview() {
+  const navigate = useNavigate();
   const inclusionTrend = [
     { month: 'Sep', rate: 68 },
     { month: 'Oct', rate: 70 },
@@ -66,7 +69,15 @@ export default function GovOverview() {
       {/* Stats */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map(s => (
-          <div key={s.label} className="rounded-2xl p-5 text-white relative overflow-hidden shadow-lg" style={{ background: s.gradient }}>
+          <div key={s.label}
+            className="rounded-2xl p-5 text-white relative overflow-hidden shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ background: s.gradient }}
+            onClick={() => {
+              if (s.label.includes('Fraud')) navigate('/government/compliance');
+              else if (s.label.includes('Participant')) toast.info('Active participant data refreshed');
+              else toast.info(`${s.label}: ${s.value}`);
+            }}
+          >
             <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 -translate-y-6 translate-x-6 bg-white" />
             <div className="flex items-start justify-between mb-4">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/20">{s.icon}</div>

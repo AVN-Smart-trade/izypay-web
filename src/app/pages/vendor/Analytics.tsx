@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 import { salesChartData } from '../../lib/data';
+import { toast } from 'sonner';
 
 export default function VendorAnalytics() {
   const topProducts = [
@@ -31,7 +32,15 @@ export default function VendorAnalytics() {
           <h1 className="text-3xl font-bold mb-2">Analytics</h1>
           <p className="text-muted-foreground">Business insights and performance metrics</p>
         </div>
-        <Button variant="outline">Export Report</Button>
+        <Button variant="outline" onClick={() => {
+          const rows = [['Month', 'Sales'], ...salesChartData.map(d => [d.month, d.sales])];
+          const csv = rows.map(r => r.join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = 'analytics_report.csv'; a.click();
+          URL.revokeObjectURL(url);
+          toast.success('Analytics report exported as CSV');
+        }}>Export Report</Button>
       </div>
 
       <div className="grid md:grid-cols-4 gap-6">
