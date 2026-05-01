@@ -32,6 +32,8 @@ export interface AdminUserDTO {
 
 export interface ManagedUserVM extends AdminUserDTO {
   password: string;
+  /** Account type selected during registration: 'customer' | 'vendor' | 'agent' */
+  userType?: string;
 }
 
 export interface ChangePasswordRequest {

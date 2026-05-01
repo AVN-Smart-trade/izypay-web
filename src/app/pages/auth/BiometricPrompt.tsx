@@ -2,15 +2,45 @@ import { useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Fingerprint, Shield, CheckCircle2 } from 'lucide-react';
+import { getAccount } from '../../api/account';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+function getDashboardByRole(authorities: string[]): string {
+  if (authorities.includes('ROLE_ADMIN')) return '/admin';
+  if (authorities.includes('ROLE_VENDOR')) return '/vendor';
+  if (authorities.includes('ROLE_AGENT')) return '/agent';
+  if (authorities.includes('ROLE_GOV')) return '/government';
+  // default: customer / ROLE_USER
+  return '/customer';
+}
 
 export default function BiometricPrompt() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+
+  const redirectToDashboard = async () => {
+    try {
+      setLoading(true);
+      const account = await getAccount();
+      const authorities: string[] = Array.isArray(account.authorities)
+        ? account.authorities
+        : [];
+      const dashboard = getDashboardByRole(authorities);
+      navigate(dashboard);
+    } catch {
+      // If we can't fetch the account (token invalid), fall back to login
+      toast.error('Session error. Please log in again.');
+      navigate('/login');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBiometricVerify = () => {
-    // Simulate biometric verification and navigate to customer dashboard
     setTimeout(() => {
-      navigate('/customer');
-    }, 1500);
+      redirectToDashboard();
+    }, 1000);
   };
 
   return (
@@ -50,15 +80,21 @@ export default function BiometricPrompt() {
             </div>
           </div>
 
-          <Button onClick={handleBiometricVerify} className="w-full" size="lg">
-            Enable SentryID Protection
+          <Button
+            onClick={handleBiometricVerify}
+            className="w-full"
+            size="lg"
+            disabled={loading}
+          >
+            {loading ? 'Redirecting…' : 'Enable SentryID Protection'}
           </Button>
 
-          <button 
-            onClick={() => navigate('/customer')}
-            className="w-full text-sm text-muted-foreground hover:text-foreground mt-4"
+          <button
+            onClick={redirectToDashboard}
+            disabled={loading}
+            className="w-full text-sm text-muted-foreground hover:text-foreground mt-4 disabled:opacity-50"
           >
-            Skip for now
+            {loading ? '…' : 'Skip for now'}
           </button>
         </Card>
 

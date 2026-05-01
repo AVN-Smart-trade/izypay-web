@@ -41,7 +41,7 @@ export default function Register() {
         email: email.trim(),
         imageUrl: null,
         langKey: 'en',
-        authorities: ['ROLE_USER'],
+        userType,   // tells the backend which role to assign (customer/vendor/agent)
         password,
       });
       toast.success('Registration successful. Check your email to activate your account.');
