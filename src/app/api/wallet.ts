@@ -69,3 +69,11 @@ export async function transferWallet(request: TransferRequest): Promise<void> {
     { method: 'POST', body: request }
   );
 }
+
+export async function getTransactions(userId: number): Promise<TransactionResponse[]> {
+  const { data } = await serviceRequest<TransactionResponse[]>(
+    'wallet-service',
+    `/api/transactions?userId=${userId}`
+  );
+  return data;
+}
