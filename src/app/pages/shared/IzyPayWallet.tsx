@@ -19,16 +19,21 @@ export default function IzyPayWallet() {
   const { user } = useAuth();
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [walletData, setWalletData] = useState<Record<string, WalletResponse>>({});
+  const [txData, setTxData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchWallets = useCallback(async () => {
     if (!user?.id) return;
     try {
       setLoading(true);
-      const data = await getWallets(user.id);
+      const [data, txs] = await Promise.all([
+        getWallets(user.id),
+        import('../../api/wallet').then(m => m.getTransactions(user.id))
+      ]);
       setWalletData(data);
+      setTxData(txs);
     } catch (err) {
-      toast.error('Failed to load wallet balances');
+      toast.error('Failed to load wallet data');
     } finally {
       setLoading(false);
     }
@@ -204,32 +209,36 @@ export default function IzyPayWallet() {
             </div>
             
             <div className="space-y-4">
-              {walletTransactions.map((txn, idx) => (
-                <div key={idx}>
+              {txData.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No recent transactions</p>
+                </div>
+              ) : txData.map((txn, idx) => (
+                <div key={txn.id || idx}>
                   <div className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-                        txn.amount > 0 ? 'bg-success/10' : 'bg-muted'
+                        txn.type === 'DEBIT' ? 'bg-muted' : 'bg-success/10'
                       }`}>
                         {getTransactionIcon(txn.type)}
                       </div>
                       <div>
-                        <p className="font-medium">{txn.description}</p>
+                        <p className="font-medium">{txn.reference || txn.type}</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(txn.date).toLocaleString()}
+                          {new Date(txn.createdDate || Date.now()).toLocaleString()}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`font-bold ${txn.amount > 0 ? 'text-success' : 'text-foreground'}`}>
-                        {txn.amount > 0 ? '+' : ''}{txn.amount.toFixed(2)} {txn.currency}
+                      <p className={`font-bold ${txn.type !== 'DEBIT' ? 'text-success' : 'text-foreground'}`}>
+                        {txn.type !== 'DEBIT' ? '+' : '-'}{Math.abs(txn.amount).toFixed(2)} {txn.currency}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Balance: {txn.balance.toFixed(2)}
+                        {txn.status}
                       </p>
                     </div>
                   </div>
-                  {idx < walletTransactions.length - 1 && <Separator />}
+                  {idx < txData.length - 1 && <Separator />}
                 </div>
               ))}
             </div>
