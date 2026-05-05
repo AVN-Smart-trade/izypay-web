@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowLeftRight, BarChart3, Building2, CreditCard, GitFork, HelpCircle, Home, Link, Package, Repeat, Settings, ShoppingBag, ShoppingBasket, Wallet } from 'lucide-react';
 import { Outlet } from 'react-router';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { useAuth } from '../../context/AuthContext';
 
 const navigation = [
   { label: 'Overview', path: '/vendor', icon: Home },
@@ -22,12 +23,16 @@ const navigation = [
 ];
 
 export default function VendorLayout() {
+  const { user, loading } = useAuth();
+  
+  if (loading) return null;
+
   return (
     <DashboardLayout 
       userType="vendor"
       navigation={navigation}
-      userName="Tawanda Chikore"
-      userPhone="+263 77 456 7890"
+      userName={user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.login || "Vendor")}
+      userPhone={user?.login || "+263 77 456 7890"}
     >
       <Outlet />
     </DashboardLayout>

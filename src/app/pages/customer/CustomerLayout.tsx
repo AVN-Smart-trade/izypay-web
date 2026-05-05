@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowLeftRight, CreditCard, HelpCircle, History, Home, QrCode, Repeat, Settings, ShoppingCart, Store, Users, Wallet } from 'lucide-react';
 import { Outlet } from 'react-router';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { useAuth } from '../../context/AuthContext';
 
 const navigation = [
   { label: 'Overview', path: '/customer', icon: Home },
@@ -19,12 +20,16 @@ const navigation = [
 ];
 
 export default function CustomerLayout() {
+  const { user, loading } = useAuth();
+  
+  if (loading) return null;
+
   return (
     <DashboardLayout 
       userType="customer"
       navigation={navigation}
-      userName="Tendai Moyo"
-      userPhone="+263 77 123 4567"
+      userName={user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.login || "Guest")}
+      userPhone={user?.login || "+263 77 123 4567"} // Assuming login is phone number based on Login UI
     >
       <Outlet />
     </DashboardLayout>

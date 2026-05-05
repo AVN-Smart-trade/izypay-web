@@ -7,15 +7,56 @@ import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { Shield, Wallet, CreditCard, Smartphone, QrCode } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useEffect, useState } from 'react';
+import { getWallets, debitWallet, WalletResponse } from '../../api/wallet';
+import { toast } from 'sonner';
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [escrowEnabled, setEscrowEnabled] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('wallet');
+  const [walletData, setWalletData] = useState<Record<string, WalletResponse>>({});
+  const [loading, setLoading] = useState(false);
 
-  const handleCheckout = () => {
-    navigate('/customer/payment-success');
+  useEffect(() => {
+    if (user?.id) {
+      getWallets(user.id).then(setWalletData).catch(() => {});
+    }
+  }, [user]);
+
+  const usdWallet = walletData['USD'] || { balance: 0, reservedBalance: 0 };
+  const total = escrowEnabled ? 17.85 : 17.50;
+
+  const handleCheckout = async () => {
+    if (paymentMethod === 'wallet') {
+      if (usdWallet.balance < total) {
+        toast.error('Insufficient wallet balance. Please top up or select another payment method.');
+        return;
+      }
+      if (!user?.id) return;
+      try {
+        setLoading(true);
+        await debitWallet({
+          userId: user.id,
+          amount: total,
+          currency: 'USD',
+        });
+        toast.success(`Successfully paid $${total.toFixed(2)} from your AVN Wallet.`);
+        navigate('/customer/payment-success');
+      } catch (err: any) {
+        toast.error(err.message || 'Payment failed');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      toast.success('Payment completed successfully!');
+      navigate('/customer/payment-success');
+    }
   };
+
+
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -32,11 +73,11 @@ export default function Checkout() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="fullName">Full Name</Label>
-                <Input id="fullName" defaultValue="Tendai Moyo" />
+                <Input id="fullName" defaultValue={user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.login || "User")} />
               </div>
               <div>
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" defaultValue="+263 77 123 4567" />
+                <Input id="phone" defaultValue={user?.login || "+263 77 123 4567"} />
               </div>
               <div>
                 <Label htmlFor="address">Delivery Address</Label>
@@ -68,7 +109,7 @@ export default function Checkout() {
                     </div>
                     <div>
                       <p className="font-medium">AVN Wallet</p>
-                      <p className="text-sm text-muted-foreground">Balance: $245.50</p>
+                      <p className="text-sm text-muted-foreground">Balance: ${usdWallet.balance.toFixed(2)}</p>
                     </div>
                   </Label>
                 </div>
@@ -150,8 +191,8 @@ export default function Checkout() {
           </div>
 
           <div className="space-y-3">
-            <Button size="lg" className="w-full" onClick={handleCheckout}>
-              Complete Payment
+            <Button size="lg" className="w-full" onClick={handleCheckout} disabled={loading}>
+              {loading ? 'Processing Payment...' : 'Complete Payment'}
             </Button>
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Shield className="w-3 h-3" />

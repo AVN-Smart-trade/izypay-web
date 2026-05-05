@@ -11,10 +11,38 @@ import {
 import { walletBalances, walletTransactions, trustScore } from '../../lib/wallet-barter-data';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
+import { getWallets, WalletResponse } from '../../api/wallet';
+import { useEffect, useCallback } from 'react';
 
 export default function IzyPayWallet() {
+  const { user } = useAuth();
   const [balanceVisible, setBalanceVisible] = useState(true);
-  const wallet = walletBalances;
+  const [walletData, setWalletData] = useState<Record<string, WalletResponse>>({});
+  const [loading, setLoading] = useState(true);
+
+  const fetchWallets = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      setLoading(true);
+      const data = await getWallets(user.id);
+      setWalletData(data);
+    } catch (err) {
+      toast.error('Failed to load wallet balances');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchWallets();
+  }, [fetchWallets]);
+
+  // Merge static UI config with dynamic balances
+  const walletConfig = [
+    { currency: 'USD', symbol: '$', flag: '🇺🇸', description: 'Primary trading currency' },
+    { currency: 'ZIG', symbol: 'ZiG', flag: '🇿🇼', description: 'Zimbabwe Gold equivalent' }
+  ];
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -34,9 +62,9 @@ export default function IzyPayWallet() {
           <h1 className="text-3xl font-bold mb-2">IzyPay Wallet</h1>
           <p className="text-muted-foreground">Multi-currency digital wallet with P2P transfers</p>
         </div>
-        <Button className="bg-primary text-white gap-2" onClick={() => toast.info('Top Up dialog — connect to IzyPay backend')}>
-          <Plus className="w-4 h-4" />
-          Top Up
+        <Button className="bg-primary text-white gap-2" onClick={fetchWallets} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
         </Button>
       </div>
 
@@ -76,56 +104,59 @@ export default function IzyPayWallet() {
 
       {/* Multi-Currency Balances */}
       <div className="grid md:grid-cols-3 gap-6">
-        {wallet.wallets.map((currency, idx) => (
-          <Card key={idx} className="p-6 relative overflow-hidden">
-            <div className="absolute top-4 right-4 text-4xl opacity-20">
-              {currency.flag}
-            </div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-muted-foreground">{currency.currency}</h3>
-                {idx === 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setBalanceVisible(!balanceVisible)}
-                  >
-                    {balanceVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </Button>
-                )}
+        {walletConfig.map((cfg, idx) => {
+          const w = walletData[cfg.currency] || { balance: 0, reservedBalance: 0 };
+          return (
+            <Card key={idx} className="p-6 relative overflow-hidden">
+              <div className="absolute top-4 right-4 text-4xl opacity-20">
+                {cfg.flag}
               </div>
-              
-              <p className="text-3xl font-bold mb-2">
-                {balanceVisible ? (
-                  `${currency.symbol} ${currency.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                ) : (
-                  '****.**'
-                )}
-              </p>
-              
-              <div className="flex items-center justify-between text-sm">
-                <div>
-                  <p className="text-muted-foreground">Available</p>
-                  <p className="font-medium">
-                    {balanceVisible ? `${currency.symbol} ${currency.available.toFixed(2)}` : '****.**'}
-                  </p>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium text-muted-foreground">{cfg.currency}</h3>
+                  {idx === 0 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setBalanceVisible(!balanceVisible)}
+                    >
+                      {balanceVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </Button>
+                  )}
                 </div>
-                {currency.pending > 0 && (
+                
+                <p className="text-3xl font-bold mb-2">
+                  {balanceVisible ? (
+                    `${cfg.symbol} ${w.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  ) : (
+                    '****.**'
+                  )}
+                </p>
+                
+                <div className="flex items-center justify-between text-sm">
                   <div>
-                    <p className="text-muted-foreground">Pending</p>
-                    <p className="font-medium text-secondary">
-                      {balanceVisible ? `${currency.symbol} ${currency.pending.toFixed(2)}` : '****.**'}
+                    <p className="text-muted-foreground">Available</p>
+                    <p className="font-medium">
+                      {balanceVisible ? `${cfg.symbol} ${w.balance.toFixed(2)}` : '****.**'}
                     </p>
                   </div>
+                  {w.reservedBalance > 0 && (
+                    <div>
+                      <p className="text-muted-foreground">Escrow</p>
+                      <p className="font-medium text-secondary">
+                        {balanceVisible ? `${cfg.symbol} ${w.reservedBalance.toFixed(2)}` : '****.**'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {cfg.description && (
+                  <p className="text-xs text-muted-foreground mt-2">{cfg.description}</p>
                 )}
               </div>
-
-              {currency.description && (
-                <p className="text-xs text-muted-foreground mt-2">{currency.description}</p>
-              )}
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {/* Quick Actions */}

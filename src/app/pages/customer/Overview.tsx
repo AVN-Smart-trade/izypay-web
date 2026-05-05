@@ -18,6 +18,7 @@ import { Link, useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { zimbabweTransactions } from '../../lib/data';
 import { toast } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
 
 const statCards = [
   {
@@ -56,9 +57,57 @@ const statCards = [
 
 export default function CustomerOverview() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [walletData, setWalletData] = useState<Record<string, any>>({});
   const [escrowItems, setEscrowItems] = useState(
     zimbabweTransactions.filter(t => t.escrow).slice(0, 2)
   );
+
+  useEffect(() => {
+    if (user?.id) {
+      import('../../api/wallet').then(({ getWallets }) => {
+        getWallets(user.id).then(setWalletData).catch(() => {});
+      });
+    }
+  }, [user]);
+
+  const usdWallet = walletData['USD'] || { balance: 0, reservedBalance: 0 };
+  const zigWallet = walletData['ZIG'] || { balance: 0, reservedBalance: 0 };
+
+  const statCards = [
+    {
+      label: 'Wallet Balance',
+      value: `$${usdWallet.balance.toFixed(2)}`,
+      sub: `ZiG ${zigWallet.balance.toFixed(2)}`,
+      badge: 'Active',
+      icon: <Wallet className="w-6 h-6 text-white" />,
+      gradient: 'linear-gradient(135deg, #0F6F5C, #12B76A)',
+    },
+    {
+      label: 'Trust Score',
+      value: '92/100',
+      sub: 'Excellent standing',
+      badge: '+2 pts',
+      icon: <Shield className="w-6 h-6 text-white" />,
+      gradient: 'linear-gradient(135deg, #C7A246, #e8c06a)',
+    },
+    {
+      label: 'Total Orders',
+      value: '47',
+      sub: '3 pending delivery',
+      badge: 'Active',
+      icon: <ShoppingBag className="w-6 h-6 text-white" />,
+      gradient: 'linear-gradient(135deg, #12B76A, #0F6F5C)',
+    },
+    {
+      label: 'Escrow Balance',
+      value: `$${(usdWallet.reservedBalance || 0).toFixed(2)}`,
+      sub: 'Protected funds',
+      badge: 'Protected',
+      icon: <Shield className="w-6 h-6 text-white" />,
+      gradient: 'linear-gradient(135deg, #3B82F6, #0F6F5C)',
+    },
+  ];
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
@@ -82,7 +131,9 @@ export default function CustomerOverview() {
       {/* Page Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 mb-1">Welcome back, Tendai! 👋</h1>
+          <h1 className="text-2xl font-black text-gray-900 mb-1">
+            Welcome back, {user?.firstName || user?.login || 'User'}! 👋
+          </h1>
           <p className="text-gray-400 text-sm">Here's what's happening with your account today</p>
         </div>
         <span
