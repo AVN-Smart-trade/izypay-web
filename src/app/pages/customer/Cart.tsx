@@ -5,52 +5,22 @@ import { Button } from '../../components/ui/button';
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface CartItem {
-  id: number;
-  name: string;
-  vendor: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
-
-const initialCartItems: CartItem[] = [
-  { id: 1, name: "Tomatoes (1kg)", vendor: "Mbare Fresh Produce", price: 2.5, quantity: 3, image: "https://images.unsplash.com/photo-1759344114577-b6c32e4d68c8?w=200" },
-  { id: 2, name: "Maize Meal (10kg)", vendor: "Harare Agro Supplies", price: 8.5, quantity: 1, image: "https://images.unsplash.com/photo-1701326786998-3688beceadda?w=200" },
-];
+import { useCart } from '../../context/CartContext';
 
 export default function Cart() {
-  const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems);
+  const { cart, updateQuantity, removeFromCart, cartTotal } = useCart();
 
-  const updateQuantity = (id: number, delta: number) => {
-    setCartItems(prev =>
-      prev.map(item => {
-        if (item.id !== id) return item;
-        const newQty = item.quantity + delta;
-        if (newQty < 1) return item;
-        return { ...item, quantity: newQty };
-      })
-    );
-  };
-
-  const removeItem = (id: number) => {
-    const item = cartItems.find(i => i.id === id);
-    setCartItems(prev => prev.filter(i => i.id !== id));
-    if (item) toast.success(`"${item.name}" removed from cart`);
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const deliveryFee = cartItems.length > 0 ? 2.0 : 0;
-  const total = subtotal + deliveryFee;
+  const deliveryFee = cart.length > 0 ? 2.0 : 0;
+  const total = cartTotal + deliveryFee;
 
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-3xl font-bold mb-2">Shopping Cart</h1>
-        <p className="text-muted-foreground">{cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in your cart</p>
+        <p className="text-muted-foreground">{cart.length} item{cart.length !== 1 ? 's' : ''} in your cart</p>
       </div>
 
-      {cartItems.length === 0 ? (
+      {cart.length === 0 ? (
         <Card className="p-12 text-center">
           <ShoppingBag className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Your cart is empty</h2>
@@ -62,25 +32,25 @@ export default function Cart() {
       ) : (
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            {cartItems.map((item) => (
-              <Card key={item.id} className="p-6">
+            {cart.map((item) => (
+              <Card key={item.product.id} className="p-6">
                 <div className="flex gap-4">
                   <img
-                    src={item.image}
-                    alt={item.name}
+                    src="https://images.unsplash.com/photo-1759344114577-b6c32e4d68c8?w=200"
+                    alt={item.product.name}
                     className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
                     onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/96x96?text=Item'; }}
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold mb-1">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{item.vendor}</p>
+                    <h3 className="font-bold mb-1">{item.product.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-3">Merchant ID: {item.product.merchantId}</p>
                     <div className="flex items-center justify-between flex-wrap gap-3">
                       <div className="flex items-center gap-3">
                         <Button
                           size="icon"
                           variant="outline"
                           className="h-8 w-8"
-                          onClick={() => updateQuantity(item.id, -1)}
+                          onClick={() => updateQuantity(item.product.id, -1)}
                           disabled={item.quantity <= 1}
                         >
                           <Minus className="w-4 h-4" />
@@ -90,18 +60,18 @@ export default function Cart() {
                           size="icon"
                           variant="outline"
                           className="h-8 w-8"
-                          onClick={() => updateQuantity(item.id, 1)}
+                          onClick={() => updateQuantity(item.product.id, 1)}
                         >
                           <Plus className="w-4 h-4" />
                         </Button>
                       </div>
                       <div className="flex items-center gap-4">
-                        <p className="text-xl font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="text-xl font-bold">{item.product.currency === 'USD' ? '$' : 'ZiG'} {(item.product.price * item.quantity).toFixed(2)}</p>
                         <Button
                           size="icon"
                           variant="ghost"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeFromCart(item.product.id)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -117,8 +87,8 @@ export default function Cart() {
             <h3 className="font-bold mb-4">Order Summary</h3>
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal ({cartItems.reduce((a, i) => a + i.quantity, 0)} items)</span>
-                <span className="font-medium">${subtotal.toFixed(2)}</span>
+                <span className="text-muted-foreground">Subtotal ({cart.reduce((a, i) => a + i.quantity, 0)} items)</span>
+                <span className="font-medium">${cartTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Delivery Fee</span>

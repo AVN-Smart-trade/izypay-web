@@ -14,15 +14,12 @@ import {
   CheckCircle2,
   SlidersHorizontal,
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
-import { zimbabweProducts, zimbabweUsers } from '../../lib/data';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { zimbabweUsers } from '../../lib/data';
 import { toast } from 'sonner';
+import { useEffect, useState, useMemo } from 'react';
+import { getMarketplaceProducts, InventoryResponse } from '../../api/merchant';
+import { useCart } from '../../context/CartContext';
 
 const productImages: Record<string, string> = {
   'market-vegetables': 'https://images.unsplash.com/photo-1759344114577-b6c32e4d68c8?w=400',
@@ -35,28 +32,48 @@ const productImages: Record<string, string> = {
 
 export default function Marketplace() {
   const navigate = useNavigate();
-  const [cartCount, setCartCount] = useState(2);
+  const { cart, addToCart } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all-categories');
   const [selectedLocation, setSelectedLocation] = useState('all-locations');
-  const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const [products, setProducts] = useState<InventoryResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    getMarketplaceProducts()
+      .then(data => {
+        if (mounted) setProducts(data);
+      })
+      .catch(() => {
+        toast.error('Failed to load marketplace products');
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   const filteredProducts = useMemo(() => {
-    return zimbabweProducts.filter(product => {
+    return products.filter(product => {
       const matchesSearch =
         searchQuery === '' ||
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.vendor.toLowerCase().includes(searchQuery.toLowerCase());
+        product.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory =
         selectedCategory === 'all-categories' ||
-        product.category.toLowerCase() === selectedCategory.toLowerCase();
+        product.category?.toLowerCase() === selectedCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [products, searchQuery, selectedCategory]);
 
-  const addToCart = (product: typeof zimbabweProducts[0]) => {
-    setCartCount(prev => prev + 1);
-    setAddedItems(prev => new Set(prev).add(product.id));
+  const handleAddToCart = (product: InventoryResponse) => {
+    addToCart(product);
+    setAddedItems(prev => new Set(prev).add(product.productId));
     toast.success(`"${product.name}" added to cart!`, {
       action: {
         label: 'View Cart',
@@ -66,7 +83,7 @@ export default function Marketplace() {
     setTimeout(() => {
       setAddedItems(prev => {
         const next = new Set(prev);
-        next.delete(product.id);
+        next.delete(product.productId);
         return next;
       });
     }, 1500);
@@ -133,7 +150,7 @@ export default function Marketplace() {
         {(searchQuery || selectedCategory !== 'all-categories') && (
           <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
             <SlidersHorizontal className="w-4 h-4" />
-            <span>Showing {filteredProducts.length} of {zimbabweProducts.length} products</span>
+            <span>Showing {filteredProducts.length} of {products.length} products</span>
             <Button
               variant="ghost"
               size="sm"
@@ -207,7 +224,11 @@ export default function Marketplace() {
           </Button>
         </div>
 
-        {filteredProducts.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <Card className="p-12 text-center">
             <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="font-medium text-lg mb-2">No products found</p>
@@ -222,19 +243,19 @@ export default function Marketplace() {
               <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
                 <div className="aspect-square bg-muted relative overflow-hidden">
                   <img
-                    src={productImages[product.image] || productImages['market-vegetables']}
+                    src={productImages[product.category?.toLowerCase() || ''] || productImages['market-vegetables']}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x300?text=Product'; }}
                   />
                   <Badge className="absolute top-2 right-2 bg-white text-foreground">
-                    In Stock: {product.stock}
+                    In Stock: {product.quantity}
                   </Badge>
                 </div>
                 <div className="p-4 space-y-3">
                   <div>
                     <h3 className="font-bold">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground">{product.vendor}</p>
+                    <p className="text-sm text-muted-foreground">Merchant ID: {product.merchantId}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{product.category}</Badge>
@@ -245,16 +266,16 @@ export default function Marketplace() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-2xl font-bold">${product.price.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">{product.currency === 'USD' ? '$' : 'ZiG'} {product.price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Per unit</p>
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => addToCart(product)}
-                      className={`gap-2 transition-all ${addedItems.has(product.id) ? 'bg-success text-white' : ''}`}
+                      onClick={() => handleAddToCart(product)}
+                      className={`gap-2 transition-all ${addedItems.has(product.productId) ? 'bg-success text-white' : ''}`}
                     >
                       <ShoppingCart className="w-4 h-4" />
-                      {addedItems.has(product.id) ? 'Added!' : 'Add'}
+                      {addedItems.has(product.productId) ? 'Added!' : 'Add'}
                     </Button>
                   </div>
                 </div>
