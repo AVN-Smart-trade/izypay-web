@@ -28,11 +28,14 @@ import {
   Plus,
   ArrowRightLeft,
 } from 'lucide-react';
-import { walletTransactions } from '../../lib/data';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
+import { useEffect, useCallback } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { getWallets, getTransactions, creditWallet, debitWallet, transferWallet, WalletResponse, TransactionResponse } from '../../api/wallet';
 
 export default function WalletManagement() {
+  const { user } = useAuth();
   const [showBalance, setShowBalance] = useState(true);
   const [currency, setCurrency] = useState('USD');
   const [topUpAmount, setTopUpAmount] = useState('');
@@ -44,8 +47,30 @@ export default function WalletManagement() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState('all');
 
-  const [walletBalance, setWalletBalance] = useState({ USD: 1245.50, ZIG: 24567.80 });
-  const [transactions, setTransactions] = useState(walletTransactions);
+  const [walletBalance, setWalletBalance] = useState<Record<string, WalletResponse>>({});
+  const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchWalletData = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      setLoading(true);
+      const [wallets, txs] = await Promise.all([
+        getWallets(user.id),
+        getTransactions(user.id)
+      ]);
+      setWalletBalance(wallets);
+      setTransactions(txs);
+    } catch (err) {
+      toast.error('Failed to load wallet data');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchWalletData();
+  }, [fetchWalletData]);
 
   const balanceData = [
     { date: 'Feb 25', balance: 985 },
@@ -53,63 +78,76 @@ export default function WalletManagement() {
     { date: 'Feb 27', balance: 1185 },
     { date: 'Feb 28', balance: 1125 },
     { date: 'Mar 01', balance: 1210 },
-    { date: 'Mar 02', balance: walletBalance.USD },
+    { date: 'Mar 02', balance: walletBalance.USD?.balance || 0 },
   ];
 
-  const handleTopUp = () => {
+  const handleTopUp = async () => {
     const amount = parseFloat(topUpAmount);
     if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
-    setWalletBalance(prev => ({ ...prev, USD: prev.USD + amount }));
-    const newTxn = {
-      id: `WTX-${Date.now()}`,
-      type: 'credit',
-      amount,
-      currency: 'USD',
-      description: `Top-up via Mastercard ••••4567`,
-      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      balance: walletBalance.USD + amount,
-    };
-    setTransactions(prev => [newTxn, ...prev]);
-    toast.success(`$${amount.toFixed(2)} added to your wallet!`);
-    setTopUpAmount('');
-    setTopUpOpen(false);
+    if (!user) return;
+    try {
+      await creditWallet({
+        userId: user.id,
+        amount,
+        currency,
+        transactionRef: `TOPUP-${Date.now()}`
+      });
+      toast.success(`$${amount.toFixed(2)} added to your wallet!`);
+      setTopUpAmount('');
+      setTopUpOpen(false);
+      fetchWalletData();
+    } catch (err) {
+      toast.error('Failed to top up wallet');
+    }
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
-    if (amount > walletBalance.USD) { toast.error('Insufficient wallet balance'); return; }
-    setWalletBalance(prev => ({ ...prev, USD: prev.USD - amount }));
-    const newTxn = {
-      id: `WTX-${Date.now()}`,
-      type: 'debit',
-      amount,
-      currency: 'USD',
-      description: `Withdrawal to ZB Bank ••••8901`,
-      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      balance: walletBalance.USD - amount,
-    };
-    setTransactions(prev => [newTxn, ...prev]);
-    toast.success(`$${amount.toFixed(2)} withdrawal initiated to your bank account.`);
-    setWithdrawAmount('');
-    setWithdrawOpen(false);
+    if (!user) return;
+    try {
+      await debitWallet({
+        userId: user.id,
+        amount,
+        currency,
+        transactionRef: `WDRAW-${Date.now()}`
+      });
+      toast.success(`$${amount.toFixed(2)} withdrawal initiated to your bank account.`);
+      setWithdrawAmount('');
+      setWithdrawOpen(false);
+      fetchWalletData();
+    } catch (err) {
+      toast.error('Withdrawal failed. Insufficient funds or error.');
+    }
   };
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     const amount = parseFloat(transferAmount);
     if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
     if (!transferRecipient.trim()) { toast.error('Enter a recipient'); return; }
-    if (amount > walletBalance.USD) { toast.error('Insufficient wallet balance'); return; }
-    setWalletBalance(prev => ({ ...prev, USD: prev.USD - amount }));
-    toast.success(`$${amount.toFixed(2)} transferred to ${transferRecipient}`);
-    setTransferAmount('');
-    setTransferRecipient('');
-    setTransferOpen(false);
+    if (!user) return;
+    try {
+      // Sending to user ID 2 as demo (replace with actual lookup)
+      await transferWallet({
+        fromUserId: user.id,
+        toUserId: 2, 
+        amount,
+        currency,
+        transactionRef: `TRF-${Date.now()}`
+      });
+      toast.success(`$${amount.toFixed(2)} transferred to ${transferRecipient}`);
+      setTransferAmount('');
+      setTransferRecipient('');
+      setTransferOpen(false);
+      fetchWalletData();
+    } catch (err) {
+      toast.error('Transfer failed. Insufficient funds or error.');
+    }
   };
 
   const filteredTransactions = typeFilter === 'all'
     ? transactions
-    : transactions.filter(t => t.type === typeFilter);
+    : transactions.filter(t => t.type?.toLowerCase() === typeFilter);
 
   return (
     <div className="space-y-6">
@@ -160,7 +198,7 @@ export default function WalletManagement() {
                 <>
                   <p className="text-5xl font-bold mb-2">
                     {currency === 'USD' ? '$' : ''}
-                    {walletBalance[currency as keyof typeof walletBalance].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {(walletBalance[currency]?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     {currency === 'ZIG' ? ' ZIG' : ''}
                   </p>
                   <div className="flex items-center gap-2 text-sm">
@@ -215,7 +253,7 @@ export default function WalletManagement() {
                       <Input type="number" placeholder="0.00" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Available: ${walletBalance.USD.toFixed(2)} • Destination: ZB Bank ••••8901
+                      Available: ${(walletBalance.USD?.balance || 0).toFixed(2)} • Destination: ZB Bank ••••8901
                     </p>
                     <div className="flex gap-3 justify-end">
                       <Button variant="outline" onClick={() => setWithdrawOpen(false)}>Cancel</Button>
@@ -242,7 +280,7 @@ export default function WalletManagement() {
                       <Label>Amount ($)</Label>
                       <Input type="number" placeholder="0.00" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} />
                     </div>
-                    <p className="text-xs text-muted-foreground">Available: ${walletBalance.USD.toFixed(2)} • Fee: $0.00</p>
+                    <p className="text-xs text-muted-foreground">Available: ${(walletBalance.USD?.balance || 0).toFixed(2)} • Fee: $0.00</p>
                     <div className="flex gap-3 justify-end">
                       <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancel</Button>
                       <Button onClick={handleTransfer}>Send Transfer</Button>
@@ -366,7 +404,7 @@ export default function WalletManagement() {
   );
 }
 
-function WalletTransactionTable({ transactions }: { transactions: typeof walletTransactions }) {
+function WalletTransactionTable({ transactions }: { transactions: TransactionResponse[] }) {
   return (
     <Card className="p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -392,39 +430,41 @@ function WalletTransactionTable({ transactions }: { transactions: typeof walletT
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((txn) => (
-              <TableRow key={txn.id}>
+            {transactions.map((txn, idx) => (
+              <TableRow key={txn.id || idx}>
                 <TableCell className="font-medium">
                   <div>
-                    <p>{new Date(txn.date).toLocaleDateString()}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(txn.date).toLocaleTimeString()}</p>
+                    <p>{new Date(txn.createdDate || Date.now()).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(txn.createdDate || Date.now()).toLocaleTimeString()}</p>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <p className="font-medium">{txn.description}</p>
-                  <p className="text-xs text-muted-foreground">{txn.id}</p>
+                  <p className="font-medium">{txn.reference || txn.type}</p>
+                  <p className="text-xs text-muted-foreground">{txn.transactionRef || txn.id}</p>
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary" className={
-                    txn.type === 'credit' ? 'bg-success/10 text-success' :
-                    txn.type === 'debit' ? 'bg-destructive/10 text-destructive' :
+                    txn.type?.toLowerCase() === 'credit' ? 'bg-success/10 text-success' :
+                    txn.type?.toLowerCase() === 'debit' ? 'bg-destructive/10 text-destructive' :
                     'bg-accent/10 text-accent'
                   }>
-                    {txn.type === 'credit' ? <ArrowDownRight className="w-3 h-3 mr-1" /> :
-                     txn.type === 'debit' ? <ArrowUpRight className="w-3 h-3 mr-1" /> :
+                    {txn.type?.toLowerCase() === 'credit' ? <ArrowDownRight className="w-3 h-3 mr-1" /> :
+                     txn.type?.toLowerCase() === 'debit' ? <ArrowUpRight className="w-3 h-3 mr-1" /> :
                      <RefreshCw className="w-3 h-3 mr-1" />}
-                    {txn.type === 'credit' ? 'Credit' : txn.type === 'debit' ? 'Debit' : 'Transfer'}
+                    {txn.type?.toLowerCase() === 'credit' ? 'Credit' : txn.type?.toLowerCase() === 'debit' ? 'Debit' : 'Transfer'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right font-medium">
                   <span className={
-                    txn.type === 'credit' ? 'text-success' :
-                    txn.type === 'debit' ? 'text-destructive' : 'text-muted-foreground'
+                    txn.type?.toLowerCase() === 'credit' ? 'text-success' :
+                    txn.type?.toLowerCase() === 'debit' ? 'text-destructive' : 'text-muted-foreground'
                   }>
-                    {txn.type === 'credit' ? '+' : '-'}${txn.amount.toFixed(2)}
+                    {txn.type?.toLowerCase() === 'credit' ? '+' : '-'}${Math.abs(txn.amount).toFixed(2)}
                   </span>
                 </TableCell>
-                <TableCell className="text-right font-medium">${txn.balance.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-medium text-muted-foreground">
+                  N/A
+                </TableCell>
               </TableRow>
             ))}
             {transactions.length === 0 && (

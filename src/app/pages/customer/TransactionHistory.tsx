@@ -35,14 +35,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
-import { zimbabweTransactions } from '../../lib/data';
 import { toast } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
+import { getTransactions, TransactionResponse } from '../../api/wallet';
+import { useEffect } from 'react';
 
 export default function TransactionHistory() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    if (user?.id) {
+      setLoading(true);
+      getTransactions(user.id)
+        .then(setTransactions)
+        .catch(() => toast.error('Failed to fetch transactions'))
+        .finally(() => setLoading(false));
+    }
+  }, [user]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -63,16 +78,15 @@ export default function TransactionHistory() {
   };
 
   const filteredTransactions = useMemo(() => {
-    return zimbabweTransactions.filter(txn => {
+    return transactions.filter(txn => {
       const matchesSearch =
         searchQuery === '' ||
-        txn.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        txn.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        txn.customer.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || txn.status === statusFilter;
+        (txn.transactionRef && txn.transactionRef.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (txn.reference && txn.reference.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesStatus = statusFilter === 'all' || txn.status.toLowerCase() === statusFilter.toLowerCase();
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, statusFilter]);
+  }, [transactions, searchQuery, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / itemsPerPage));
   const paginatedTransactions = filteredTransactions.slice(
@@ -82,8 +96,8 @@ export default function TransactionHistory() {
 
   const handleExport = () => {
     const csv = [
-      ['ID', 'Date', 'Vendor', 'Customer', 'Amount', 'Currency', 'Status'],
-      ...filteredTransactions.map(t => [t.id, t.date, t.vendor, t.customer, t.amount.toFixed(2), t.currency, t.status]),
+      ['ID', 'Date', 'Type', 'Amount', 'Currency', 'Status'],
+      ...filteredTransactions.map(t => [t.transactionRef, t.createdDate, t.type, t.amount.toFixed(2), t.currency, t.status]),
     ].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -95,12 +109,12 @@ export default function TransactionHistory() {
     toast.success('Transaction history exported as CSV');
   };
 
-  const totalSpent = zimbabweTransactions.filter(t => t.status === 'completed').reduce((s, t) => s + t.amount, 0);
-  const completedCount = zimbabweTransactions.filter(t => t.status === 'completed').length;
-  const escrowCount = zimbabweTransactions.filter(t => t.status === 'escrow').length;
-  const escrowTotal = zimbabweTransactions.filter(t => t.status === 'escrow').reduce((s, t) => s + t.amount, 0);
-  const pendingCount = zimbabweTransactions.filter(t => t.status === 'pending').length;
-  const pendingTotal = zimbabweTransactions.filter(t => t.status === 'pending').reduce((s, t) => s + t.amount, 0);
+  const totalSpent = transactions.filter(t => t.status === 'SUCCESS' && t.type === 'DEBIT').reduce((s, t) => s + Math.abs(t.amount), 0);
+  const completedCount = transactions.filter(t => t.status === 'SUCCESS').length;
+  const escrowCount = 0; // Escrow count is not directly mapped yet
+  const escrowTotal = 0;
+  const pendingCount = transactions.filter(t => t.status === 'PENDING').length;
+  const pendingTotal = transactions.filter(t => t.status === 'PENDING').reduce((s, t) => s + Math.abs(t.amount), 0);
 
   return (
     <div className="space-y-6">
@@ -186,31 +200,25 @@ export default function TransactionHistory() {
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedTransactions.map((txn) => (
-                <TableRow key={txn.id}>
+              paginatedTransactions.map((txn, idx) => (
+                <TableRow key={txn.id || idx}>
                   <TableCell>
-                    <code className="text-sm font-mono">{txn.id}</code>
+                    <code className="text-sm font-mono">{txn.transactionRef || txn.id}</code>
                   </TableCell>
-                  <TableCell>{txn.date}</TableCell>
+                  <TableCell>{new Date(txn.createdDate || Date.now()).toLocaleString()}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{txn.vendor}</p>
-                      {txn.escrow && (
-                        <div className="flex items-center gap-1 text-xs text-accent mt-1">
-                          <Shield className="w-3 h-3" />
-                          Escrow Protected
-                        </div>
-                      )}
+                      <p className="font-medium">{txn.reference || txn.type}</p>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="font-bold">${txn.amount.toFixed(2)}</p>
+                    <p className="font-bold">${Math.abs(txn.amount).toFixed(2)}</p>
                     <p className="text-xs text-muted-foreground">{txn.currency}</p>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={`gap-1 ${getStatusColor(txn.status)}`}>
-                      {getStatusIcon(txn.status)}
-                      {txn.status.charAt(0).toUpperCase() + txn.status.slice(1)}
+                    <Badge variant="secondary" className={`gap-1 ${getStatusColor(txn.status?.toLowerCase() || 'pending')}`}>
+                      {getStatusIcon(txn.status?.toLowerCase() || 'pending')}
+                      {txn.status || 'PENDING'}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -228,44 +236,38 @@ export default function TransactionHistory() {
                           </DialogHeader>
                           <div className="space-y-4 mt-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Transaction ID</span>
-                              <code className="font-mono text-xs">{txn.id}</code>
+                              <span className="text-muted-foreground">Transaction Ref</span>
+                              <code className="font-mono text-xs">{txn.transactionRef}</code>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Date</span>
-                              <span className="font-medium">{txn.date}</span>
+                              <span className="font-medium">{new Date(txn.createdDate || Date.now()).toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Vendor</span>
-                              <span className="font-medium">{txn.vendor}</span>
+                              <span className="text-muted-foreground">Type</span>
+                              <span className="font-medium">{txn.type}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Customer</span>
-                              <span className="font-medium">{txn.customer}</span>
+                              <span className="text-muted-foreground">Reference</span>
+                              <span className="font-medium">{txn.reference}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Amount</span>
-                              <span className="font-bold text-lg">${txn.amount.toFixed(2)} {txn.currency}</span>
+                              <span className="font-bold text-lg">${Math.abs(txn.amount).toFixed(2)} {txn.currency}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                               <span className="text-muted-foreground">Status</span>
-                              <Badge variant="secondary" className={getStatusColor(txn.status)}>
+                              <Badge variant="secondary" className={getStatusColor(txn.status?.toLowerCase() || 'pending')}>
                                 {txn.status}
                               </Badge>
                             </div>
-                            {txn.escrow && (
-                              <div className="p-3 rounded-lg bg-accent/10 border border-accent/20 text-sm text-accent flex items-center gap-2">
-                                <Shield className="w-4 h-4" />
-                                Funds are held in escrow until delivery confirmed
-                              </div>
-                            )}
                           </div>
                         </DialogContent>
                       </Dialog>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => toast.success(`Receipt for ${txn.id} downloaded`)}
+                        onClick={() => toast.success(`Receipt downloaded`)}
                       >
                         <Download className="w-4 h-4" />
                       </Button>

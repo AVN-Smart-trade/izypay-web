@@ -8,16 +8,64 @@ import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Separator } from '../../components/ui/separator';
 import { Send, Users, ArrowRight, Shield, Zap, CheckCircle2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
-import { p2pTransfers, walletBalances } from '../../lib/wallet-barter-data';
+import { p2pTransfers } from '../../lib/wallet-barter-data';
 import { toast } from 'sonner';
+import { useEffect, useState, useCallback } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { getWallets, transferWallet, getTransactions, WalletResponse, TransactionResponse } from '../../api/wallet';
 
 export default function P2PTransfer() {
+  const { user } = useAuth();
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
   const [amount, setAmount] = useState('');
   const [recipient, setRecipient] = useState('');
+  const [walletBalance, setWalletBalance] = useState<Record<string, WalletResponse>>({});
+  const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSend = () => {
-    toast.success('Transfer initiated successfully!');
+  const fetchWalletData = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      setLoading(true);
+      const [wallets, txs] = await Promise.all([
+        getWallets(user.id),
+        getTransactions(user.id)
+      ]);
+      setWalletBalance(wallets);
+      // Filter only transfers
+      setTransactions(txs.filter(t => t.type === 'TRANSFER' || t.reference?.toLowerCase().includes('transfer')));
+    } catch (err) {
+      toast.error('Failed to load wallet data');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchWalletData();
+  }, [fetchWalletData]);
+
+  const handleSend = async () => {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
+    if (!recipient.trim()) { toast.error('Enter a recipient'); return; }
+    if (!user) return;
+    try {
+      // Demo: sending to user ID 2
+      await transferWallet({
+        fromUserId: user.id,
+        toUserId: 2, 
+        amount: amt,
+        currency: selectedCurrency,
+        transactionRef: `P2P-${Date.now()}`
+      });
+      toast.success(`$${amt.toFixed(2)} transferred to ${recipient}`);
+      setAmount('');
+      setRecipient('');
+      fetchWalletData();
+    } catch (err) {
+      toast.error('Transfer failed. Insufficient funds or error.');
+    }
   };
 
   return (
@@ -73,9 +121,9 @@ export default function P2PTransfer() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">🇺🇸 USD - Available: $1,180.50</SelectItem>
-                    <SelectItem value="ZIG">🇿🇼 ZiG - Available: Z$36,800</SelectItem>
-                    <SelectItem value="DAC">🌾 DAC - Available: 450 DAC</SelectItem>
+                    <SelectItem value="USD">🇺🇸 USD - Available: ${(walletBalance.USD?.balance || 0).toFixed(2)}</SelectItem>
+                    <SelectItem value="ZIG">🇿🇼 ZiG - Available: Z${(walletBalance.ZIG?.balance || 0).toFixed(2)}</SelectItem>
+                    <SelectItem value="DAC">🌾 DAC - Available: 0 DAC</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -174,52 +222,54 @@ export default function P2PTransfer() {
           <Card className="p-6">
             <h3 className="font-bold mb-6">Recent P2P Transfers</h3>
             <div className="space-y-4">
-              {p2pTransfers.map((transfer, idx) => (
-                <div key={idx} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+              {transactions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No recent transfers</p>
+                </div>
+              ) : transactions.map((transfer, idx) => (
+                <div key={transfer.id || idx} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        transfer.type === 'received' ? 'bg-success/10' : 'bg-primary/10'
+                        transfer.type === 'DEBIT' ? 'bg-primary/10' : 'bg-success/10'
                       }`}>
-                        {transfer.type === 'received' ? (
-                          <ArrowDownLeft className="w-5 h-5 text-success" />
-                        ) : (
+                        {transfer.type === 'DEBIT' ? (
                           <ArrowUpRight className="w-5 h-5 text-primary" />
+                        ) : (
+                          <ArrowDownLeft className="w-5 h-5 text-success" />
                         )}
                       </div>
                       <div>
                         <p className="font-medium">
-                          {transfer.type === 'received' ? transfer.sender : transfer.recipient}
+                          {transfer.type === 'DEBIT' ? 'To: Recipient' : 'From: Sender'}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {transfer.type === 'received' ? transfer.senderPhone : transfer.recipientPhone}
+                          {transfer.reference || 'P2P Transfer'}
                         </p>
                       </div>
                     </div>
                     <Badge variant="secondary" className={
-                      transfer.status === 'completed' ? 'bg-success/10 text-success' :
+                      transfer.status === 'SUCCESS' ? 'bg-success/10 text-success' :
                       'bg-secondary/10 text-secondary'
                     }>
-                      {transfer.status}
+                      {transfer.status || 'PENDING'}
                     </Badge>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">
-                        {new Date(transfer.date).toLocaleString()}
+                        {new Date(transfer.createdDate || Date.now()).toLocaleString()}
                       </p>
-                      <p className="text-sm text-muted-foreground">{transfer.reference}</p>
+                      <p className="text-sm text-muted-foreground">{transfer.transactionRef}</p>
                     </div>
                     <div className="text-right">
                       <p className={`text-lg font-bold ${
-                        transfer.type === 'received' ? 'text-success' : 'text-foreground'
+                        transfer.type !== 'DEBIT' ? 'text-success' : 'text-foreground'
                       }`}>
-                        {transfer.type === 'received' ? '+' : '-'}{transfer.amount.toFixed(2)} {transfer.currency}
+                        {transfer.type !== 'DEBIT' ? '+' : '-'}{Math.abs(transfer.amount).toFixed(2)} {transfer.currency}
                       </p>
-                      {transfer.fee > 0 && (
-                        <p className="text-xs text-muted-foreground">Fee: ${transfer.fee.toFixed(2)}</p>
-                      )}
+                      <p className="text-xs text-muted-foreground">Fee: $0.00</p>
                     </div>
                   </div>
                 </div>
